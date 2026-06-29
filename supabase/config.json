@@ -1,0 +1,11 @@
+{
+  "project_id": "amicale-sdis-lamadeleine",
+  "storage": {
+    "file_size_limit": "50MiB",
+    "allowed_mime_types": [
+      "application/pdf",
+      "image/jpeg",
+      "image/png"
+    ]
+  }
+}

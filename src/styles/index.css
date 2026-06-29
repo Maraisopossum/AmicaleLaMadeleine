@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Big+Shoulders+Display:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles pour l'amicale — direction "Caserne 1847" */
+
+:root {
+  --color-primary: #FF4F00;
+  --color-accent-gold: #D4AF37;
+}
+
+body {
+  font-family: 'Public Sans', system-ui, sans-serif;
+  color: #181410;
+  background-color: #F3ECDC;
+}
+
+/* Cartes "patch" — remplace les anciennes signature-card arrondies/colorées */
+.signature-card {
+  @apply bg-brand-paper border border-brand-hairline p-xl text-brand-ink relative;
+}
+
+.signature-coral {
+  @apply bg-brand-brick text-brand-parchment border-brand-brick;
+}
+
+.signature-gold {
+  @apply bg-brand-sky text-brand-ink border-brand-sky;
+}
+
+/* Boutons */
+.btn-primary {
+  @apply bg-brand-brick text-brand-parchment font-display font-bold uppercase text-sm tracking-[0.08em] px-lg py-sm transition-colors;
+}
+
+.btn-primary:hover {
+  background-color: #D8341F;
+}
+
+.btn-secondary {
+  @apply bg-transparent text-brand-brick font-display font-bold uppercase text-sm tracking-[0.08em] px-lg py-sm border border-brand-brick transition-colors;
+}
+
+.btn-secondary:hover {
+  @apply bg-brand-brick text-brand-parchment;
+}
+
+/* Section spacing */
+.section-spacing {
+  @apply py-12 px-6;
+}
+
+/* Classes personnalisées pour le design */
+.text-display-lg {
+  @apply font-display font-extrabold uppercase text-3xl md:text-4xl;
+}
+
+.text-display-md {
+  @apply font-display font-extrabold uppercase text-2xl md:text-3xl;
+}
+
+.mb-xl {
+  @apply mb-6;
+}
+
+.bg-primary-light {
+  background-color: #FF6B35;
+}
+
+.text-primary-dark {
+  color: #CC3F00;
+}
+
+.bg-accent-gold {
+  background-color: #D4AF37;
+}
+
+.text-surface-dark {
+  color: #1a1a1a;
+}
+
+/* --- Direction "Caserne 1847" : motifs liés à l'écusson --- */
+
+/* Bandeau de navigation/page protégée, commun à toutes les pages internes */
+.app-header {
+  @apply bg-brand-ink text-brand-parchment py-md px-xl border-b-2 border-brand-petrol;
+}
+
+/* Étiquette de section, ex. "§01 — Organigramme" */
+.eyebrow {
+  @apply uppercase text-xs tracking-[0.2em] text-brand-petrol font-semibold;
+}
+
+/* Tag bordé pour statuts/types — remplace les pastilles bg-xxx-100 génériques */
+.tag {
+  @apply uppercase text-xs tracking-[0.1em] font-semibold border px-sm py-xxs inline-block;
+}
+
+/* Bande de chevrons, comme les bandes réfléchissantes des tenues d'intervention */
+.chevron-band {
+  height: 10px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #74C7E8 0,
+    #74C7E8 10px,
+    #181410 10px,
+    #181410 20px
+  );
+}
+
+/* Grain léger pour donner une texture "papier" au panneau héro */
+.grain-overlay {
+  position: relative;
+}
+.grain-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+}
+
+/* Étiquette en forme d'écusson pour les rôles/types */
+.badge-tag {
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%);
+}
