@@ -37,15 +37,16 @@ Aucune suite de tests n'est configurée à ce jour.
 
 ```
 src/
-├── components/Layout/   # Header, Footer
+├── components/Layout/   # Header, ModuleHeader
 ├── pages/
-│   ├── public/          # Organigramme (accueil, sans auth)
+│   ├── public/          # Organigramme, Welcome (accueil, sans auth)
 │   ├── auth/             # Login
 │   ├── dashboard/        # Tableau de bord (rôles bureau)
 │   ├── members/          # Liste/gestion membres
 │   ├── documents/        # PDF + archives
 │   ├── cotisations/      # Suivi paiements
-│   └── calendrier/       # Événements + ICS
+│   ├── compte/           # Mon compte (auto-édition membre)
+│   └── calendrier/       # Événements + ICS + page dédiée + Organisation
 ├── contexts/AuthContext.tsx  # Auth + résolution du membre courant
 ├── lib/supabase.ts       # Client Supabase + types de données
 └── styles/               # Tailwind + CSS custom
@@ -54,27 +55,33 @@ supabase/migrations/      # Schéma SQL (source de vérité du schéma DB)
 
 ## Auth et autorisation
 
-- [src/contexts/AuthContext.tsx](src/contexts/AuthContext.tsx) expose `user` (session Supabase Auth), `membre` (ligne `membres` jointe par email), `loading`, et `isAdmin` (vrai si `membre.role` ∈ `president | tresorier | secretaire | adjoint`).
-- Il n'y a **pas** de garde de route centralisée dans [src/App.tsx](src/App.tsx). Chaque page protégée (Dashboard, Membres, Documents, Cotisations, Calendrier) répète elle-même le même pattern : `useEffect` qui `navigate('/')` si `!loading && !isAdmin`, et `return null` pendant le chargement/redirect. Toute nouvelle page protégée doit reproduire ce pattern.
-- La sécurité réelle des données doit venir des **policies RLS Postgres** côté Supabase, le contrôle d'accès client n'est qu'un confort UX.
+- [src/contexts/AuthContext.tsx](src/contexts/AuthContext.tsx) expose `user` (session Supabase Auth), `membre` (ligne `membres` jointe par email), `loading`, `isAdmin` et `canManageMembres`.
+- `isAdmin` est vrai si `membre.role` ∈ les 6 rôles élus de bureau (`president`, `secretaire`, `tresorier`, `adjoint_president`, `adjoint_secretaire`, `adjoint_tresorier`) **ou** si l'email connecté est `VITE_ADMIN_EMAIL` — ce compte admin fixe ([src/pages/auth/Login.tsx](src/pages/auth/Login.tsx) l'utilise via le raccourci de connexion `admin`/`admin`) n'a pas forcément de ligne `membres` avec un rôle de bureau, donc ce cas doit rester explicite dans `isAdmin`.
+- `canManageMembres` (plus restreint qu'`isAdmin` : seulement président + admin) gate la modification du rôle/statut d'un membre ou sa suppression.
+- Il n'y a **pas** de garde de route centralisée dans [src/App.tsx](src/App.tsx). Chaque page protégée répète le même pattern : `useEffect` qui `navigate('/login')` (ou `/`) si `!loading && !user`/`!isAdmin`, et `return null` pendant le chargement/redirect. Toute nouvelle page protégée doit reproduire ce pattern.
+- La sécurité réelle des données doit venir des **policies RLS Postgres** côté Supabase, le contrôle d'accès client n'est qu'un confort UX. Toute fonction RLS qui imite `isAdmin`/`canManageMembres` côté base (`is_bureau`, `is_membre_manager`) doit rester synchronisée avec la logique du `AuthContext` — notamment le cas du compte admin fixe (email en dur dans les deux, cf. migrations `20240111000000_membres_gestionnaire.sql` et `20240115000000_is_bureau_admin.sql`).
 
 ## Données et types
 
-- Le schéma SQL canonique vit dans [supabase/migrations/20240101000000_initial_schema.sql](supabase/migrations/20240101000000_initial_schema.sql) : `membres`, `organigramme`, `documents`, `cotisations`, `evenements`, `parametres_notifications`.
-- Les types TS correspondants (`Membre`, `Document`, `Cotisation`, `Evenement`) sont déclarés à la main dans [src/lib/supabase.ts](src/lib/supabase.ts), pas générés — `npm run supabase:generate` produit un `database.types.ts` séparé qui n'est pas encore consommé ailleurs. Si le schéma SQL change, mettre à jour ces types manuellement (notamment les valeurs de `CHECK` constraints comme `role` ou `type`).
+- Le schéma SQL canonique vit dans les migrations de [supabase/migrations/](supabase/migrations/), appliquées dans l'ordre chronologique de leur préfixe de date. Tables principales : `membres`, `organigramme`, `documents`, `cotisations`, `evenements`, `parametres_notifications`, plus le module Organisation d'événement (`evenement_sections`, `evenement_organisation`, `stands`, `deadlines`, `affectations`).
+- Les types TS correspondants (`Membre`, `Document`, `Cotisation`, `Evenement`, `Stand`, `Deadline`, `Affectation`...) sont déclarés à la main dans [src/lib/supabase.ts](src/lib/supabase.ts), pas générés — `npm run supabase:generate` produit un `database.types.ts` séparé qui n'est pas encore consommé ailleurs. Si le schéma SQL change, mettre à jour ces types manuellement (notamment les valeurs de `CHECK` constraints comme `role` ou `type`).
+- Les écritures Supabase (`const { data } = await supabase...`) n'inspectent généralement pas `error` — un échec réseau ou une policy RLS qui bloque silencieusement se traduit par une liste vide côté UI plutôt qu'un message d'erreur. C'est la convention actuelle du code existant, pas un oubli isolé à corriger page par page.
 
-## Pages et données de test
+## Module Organisation d'un événement
 
-Les pages comme [src/pages/public/Organigramme.tsx](src/pages/public/Organigramme.tsx) contiennent des jeux de données statiques (`bureauTest`, `membresTest`) chargés par défaut en `useEffect`, avec l'appel Supabase réel laissé en commentaire juste après (`/* Promise.all([fetchBureau(), fetchMembres()]) */`). Pour brancher une page sur les vraies données, décommenter cet appel et retirer le fallback de test.
+[src/pages/calendrier/Evenement.tsx](src/pages/calendrier/Evenement.tsx) (page dédiée d'un événement, visible seulement si `evenements.page_dediee = true`) a deux onglets : "Infos" (programme/infos pratiques + liste publique des stands) et "Organisation" ([src/pages/calendrier/Organisation.tsx](src/pages/calendrier/Organisation.tsx), réservé aux gros événements type JPO).
+
+- L'onglet Organisation a 3 sous-parties : Stands, Deadlines, Planning horaire (grille de créneaux configurable en heures de début/fin + durée, imprimable en A4 paysage via une feuille `@media print` scoped sur `#planning-impression`).
+- Modèle de permission à deux niveaux, distinct d'`isAdmin` global : un membre peut être désigné `responsable_id` d'un `stand` et devient alors gestionnaire de ce stand uniquement (peut l'éditer, gérer ses deadlines et ses affectations de créneaux), sans être du bureau. Côté RLS, la fonction `is_stand_manager(email, stand_id)` (migration `20240114000000_evenement_organisation.sql`) encode cette règle ; côté front, le callback `peutGererStand(stand)` dans `Organisation.tsx` fait la même vérification (`isAdmin || stand.responsable_id === membre.id`).
+- Les deadlines peuvent être globales à l'événement (`stand_id = null`, gérées par le bureau) ou rattachées à un stand (gérées aussi par son gestionnaire).
+- Les affectations de créneaux acceptent soit un `membre_id` existant, soit un `nom_libre` (bénévole externe sans compte) — `affectations` a une contrainte `CHECK` exigeant l'un des deux.
 
 ## Style
 
-Design system Tailwind custom dans [tailwind.config.cjs](tailwind.config.cjs) plutôt que l'échelle par défaut :
-- Couleurs : `primary` rouge `#FF4F00`, `accent.gold` `#D4AF37`, `surface.dark` anthracite `#1a1a1a`.
-- Espacements sémantiques `xxs`→`section` (ex. `p-xl`, `gap-lg`) et rayons `xs`→`pill`.
+Design system Tailwind custom dans [tailwind.config.cjs](tailwind.config.cjs) plutôt que l'échelle par défaut. La palette réellement utilisée dans le code est `brand.*` ("Caserne 1847", extraite de l'écusson) : `brand-brick` (rouge brique), `brand-petrol` (bleu pétrole, couleur d'accent principale), `brand-sky`, `brand-ink` (texte foncé), `brand-parchment`/`brand-paper` (fonds clairs), `brand-hairline` (bordures). Les tokens `primary`/`accent`/`surface` existent aussi dans le config mais ne sont utilisés nulle part dans `src/` — ne pas les introduire dans du nouveau code, rester sur `brand-*`.
 
-Utiliser ces tokens plutôt que les classes Tailwind par défaut (`bg-red-600`, etc.) pour rester cohérent avec l'existant.
+Espacements sémantiques `xxs`→`section` (ex. `p-xl`, `gap-lg`) et rayons `xs`→`pill`, à utiliser plutôt que les classes Tailwind par défaut (`bg-red-600`, `p-4`, etc.) pour rester cohérent avec l'existant.
 
 ## Notes
 
-Voir [DESIGN.md](DESIGN.md) pour les décisions de design UI/UX détaillées.
+Voir [DESIGN.md](DESIGN.md) pour les décisions de design UI/UX détaillées, et [AUDIT.md](AUDIT.md) pour l'historique d'un audit sécurité/qualité (RLS, gardes d'auth manquantes, etc.) déjà corrigé dans le code actuel.
