@@ -40,7 +40,7 @@ export default function ModuleHeader({ eyebrowCode, eyebrowLabel, title, subtitl
 
       <div className="relative max-w-6xl mx-auto px-xl pt-xl pb-xxl">
         <p className="text-brand-sky uppercase text-xs md:text-sm tracking-[0.3em] font-semibold mb-sm">
-          {eyebrowCode} — {eyebrowLabel}
+          {eyebrowLabel}
         </p>
         <h1 className="font-display font-extrabold uppercase text-brand-parchment leading-[0.95] text-4xl md:text-6xl max-w-3xl">
           {title}

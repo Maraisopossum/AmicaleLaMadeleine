@@ -13,21 +13,18 @@ export default function Welcome() {
       </div>
 
       <div className="relative text-center px-xl">
-        <p className="eyebrow text-brand-sky mb-md">Caserne fondée en 1847</p>
         <img src="/Logo.png" alt="Amicale des Sapeurs-Pompiers de La Madeleine" className="h-32 w-auto mx-auto mb-lg drop-shadow-lg" />
-        <h1 className="font-display font-extrabold uppercase text-brand-parchment text-4xl md:text-5xl leading-[0.95] mb-xs">
+        <h1 className="font-display font-extrabold uppercase text-brand-parchment text-4xl md:text-5xl leading-[0.95] mb-xl">
           Amicale des
           <br />
           Sapeurs-Pompiers
+          <br />
+          de La Madeleine
         </h1>
-        <p className="text-brand-parchment/60 uppercase text-sm tracking-[0.2em] mb-xl">de La Madeleine</p>
 
         <div className="flex flex-col gap-sm items-center">
           <Link to="/login" className="btn-primary">
             Connexion
-          </Link>
-          <Link to="/organigramme" className="text-brand-sky hover:text-brand-parchment text-sm uppercase tracking-[0.12em] font-semibold mt-sm">
-            Voir l'organigramme
           </Link>
         </div>
       </div>

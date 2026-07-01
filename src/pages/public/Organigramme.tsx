@@ -18,6 +18,7 @@ export default function Organigramme() {
   const navigate = useNavigate()
   const [tousMembres, setTousMembres] = useState<Membre[]>([])
   const [loading, setLoading] = useState(true)
+  const [sortBy, setSortBy] = useState<'nom' | 'prenom' | 'statut'>('nom')
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -38,8 +39,10 @@ export default function Organigramme() {
   }
 
   const membresSimples = useMemo(
-    () => tousMembres.filter((m) => !POSTES_UNIQUES.includes(m.role)),
-    [tousMembres]
+    () => tousMembres
+      .filter((m) => !POSTES_UNIQUES.includes(m.role))
+      .sort((a, b) => (a[sortBy] ?? '').localeCompare(b[sortBy] ?? '', 'fr', { sensitivity: 'base' })),
+    [tousMembres, sortBy]
   )
 
   const handleAssignPoste = async (role: string, membreId: string) => {
@@ -98,7 +101,6 @@ export default function Organigramme() {
 
       {/* BUREAU */}
       <section className="py-section px-xl max-w-6xl mx-auto">
-        <SectionEyebrow code="§01" label="Organigramme" />
         <h2 className="font-display font-bold uppercase text-3xl md:text-4xl mb-xs">Le bureau actuel</h2>
         {canManageMembres && (
           <p className="text-sm text-brand-ink/50 mb-xl">Choisis le membre qui occupe chaque poste.</p>
@@ -134,17 +136,27 @@ export default function Organigramme() {
 
       {/* MEMBRES — registre d'appel */}
       <section className="py-section px-xl max-w-6xl mx-auto">
-        <SectionEyebrow code="§02" label="Effectifs" />
         <h2 className="font-display font-bold uppercase text-3xl md:text-4xl mb-xl">Membres de l'amicale</h2>
 
         <div className="border border-brand-hairline bg-brand-paper">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] w-16">N°</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Nom</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Prénom</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Statut</th>
+                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
+                  <button onClick={() => setSortBy('nom')} className={`hover:text-brand-sky transition-colors ${sortBy === 'nom' ? 'text-brand-sky' : ''}`}>
+                    Nom {sortBy === 'nom' && '↑'}
+                  </button>
+                </th>
+                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
+                  <button onClick={() => setSortBy('prenom')} className={`hover:text-brand-sky transition-colors ${sortBy === 'prenom' ? 'text-brand-sky' : ''}`}>
+                    Prénom {sortBy === 'prenom' && '↑'}
+                  </button>
+                </th>
+                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
+                  <button onClick={() => setSortBy('statut')} className={`hover:text-brand-sky transition-colors ${sortBy === 'statut' ? 'text-brand-sky' : ''}`}>
+                    Statut {sortBy === 'statut' && '↑'}
+                  </button>
+                </th>
                 {canManageMembres && (
                   <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]"></th>
                 )}
@@ -156,7 +168,6 @@ export default function Organigramme() {
                   key={membre.id}
                   className={`border-t border-brand-hairline ${i % 2 === 1 ? 'bg-brand-parchment/50' : ''} hover:bg-brand-sky/10`}
                 >
-                  <td className="py-sm px-md font-display text-brand-petrol">{String(i + 1).padStart(2, '0')}</td>
                   <td className="py-sm px-md font-medium">{membre.nom}</td>
                   <td className="py-sm px-md">{membre.prenom}</td>
                   <td className="py-sm px-md">
@@ -284,8 +295,6 @@ function PosteCard({
 function SectionEyebrow({ code, label }: { code: string; label: string }) {
   return (
     <div className="flex items-center gap-sm mb-sm">
-      <span className="font-display text-brand-brick text-sm">{code}</span>
-      <span className="h-px flex-grow-0 w-8 bg-brand-hairline" />
       <span className="uppercase text-xs tracking-[0.2em] text-brand-petrol font-semibold">{label}</span>
     </div>
   )

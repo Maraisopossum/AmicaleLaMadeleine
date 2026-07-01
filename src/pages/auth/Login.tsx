@@ -39,7 +39,6 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-brand-parchment font-body text-brand-ink">
       <div className="max-w-md w-full mx-auto p-xl">
         <div className="signature-card signature-coral text-center mb-xl">
-          <p className="eyebrow text-brand-sky mb-xs">Caserne 1847</p>
           <h1 className="text-display-md text-brand-parchment leading-tight">
             Amicale des Sapeurs-Pompiers
             <br />

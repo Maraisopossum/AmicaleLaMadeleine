@@ -28,6 +28,8 @@ export default function Membres() {
   const { user, isAdmin, canManageMembres, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
+  const [sortBy, setSortBy] = useState<'nom' | 'prenom' | 'role' | 'statut' | 'notifications_active'>('nom')
+
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState<NouveauMembre>(MEMBRE_VIDE)
   const [addError, setAddError] = useState('')
@@ -172,6 +174,21 @@ export default function Membres() {
     }
   }
 
+  const downloadCsvTemplate = () => {
+    const rows = [
+      'prenom,nom,email,role,statut',
+      'Marie,Dupont,marie.dupont@example.com,membre_actif,actif',
+      'Jean,Martin,jean.martin@example.com,membre_passif,passif',
+    ]
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'modele_membres.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-brand-parchment">
@@ -196,12 +213,15 @@ export default function Membres() {
 
       <main className="max-w-6xl mx-auto p-xl">
         {isAdmin && (
-          <div className="flex gap-md mb-xl">
+          <div className="flex gap-md mb-xl flex-wrap">
             <button className="btn-primary" onClick={() => setShowAddForm(true)}>
               + Ajouter un membre
             </button>
             <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
               Importer un CSV
+            </button>
+            <button className="btn-secondary" onClick={downloadCsvTemplate}>
+              Télécharger le modèle CSV
             </button>
             <input
               ref={fileInputRef}
@@ -240,14 +260,18 @@ export default function Membres() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] w-16">N°</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Nom</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Prénom</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Rôle</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Statut</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Notifications</th>
+                {(['nom', 'prenom', 'role', 'statut', 'notifications_active'] as const).map((col) => {
+                  const labels: Record<string, string> = { nom: 'Nom', prenom: 'Prénom', role: 'Rôle', statut: 'Statut', notifications_active: 'Notifications' }
+                  return (
+                    <th key={col} className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
+                      <button onClick={() => setSortBy(col)} className={`hover:text-brand-sky transition-colors ${sortBy === col ? 'text-brand-sky' : ''}`}>
+                        {labels[col]} {sortBy === col && '↑'}
+                      </button>
+                    </th>
+                  )
+                })}
                 {isAdmin && (
-                  <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Accès</th>
+                  <th className="text-left py-sm px-md font-semibold text-xs tracking-[0.15em]">Accès</th>
                 )}
                 {canManageMembres && (
                   <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]"></th>
@@ -255,12 +279,15 @@ export default function Membres() {
               </tr>
             </thead>
             <tbody>
-              {membres.map((membre, i) => (
+              {[...membres].sort((a, b) => {
+                const va = String(a[sortBy] ?? '')
+                const vb = String(b[sortBy] ?? '')
+                return va.localeCompare(vb, 'fr', { sensitivity: 'base' })
+              }).map((membre, i) => (
                 <tr
                   key={membre.id}
                   className={`border-t border-brand-hairline ${i % 2 === 1 ? 'bg-brand-parchment/50' : ''} hover:bg-brand-sky/10`}
                 >
-                  <td className="py-sm px-md font-display text-brand-petrol">{String(i + 1).padStart(2, '0')}</td>
                   <td className="py-sm px-md font-medium">{membre.nom}</td>
                   <td className="py-sm px-md">{membre.prenom}</td>
                   <td className="py-sm px-md">
