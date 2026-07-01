@@ -10,6 +10,8 @@ import Cotisations from './pages/cotisations/Cotisations'
 import Calendrier from './pages/calendrier/Calendrier'
 import MonCompte from './pages/compte/MonCompte'
 import Evenement from './pages/calendrier/Evenement'
+import Votes from './pages/votes/Votes'
+import VotePage from './pages/votes/Vote'
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/calendrier/:id" element={<Evenement />} />
         <Route path="/mon-compte" element={<MonCompte />} />
+        <Route path="/votes" element={<Votes />} />
+        <Route path="/votes/:id" element={<VotePage />} />
       </Routes>
     </AuthProvider>
   )

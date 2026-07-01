@@ -120,3 +120,42 @@ export type Affectation = {
   nom_libre: string | null
   created_at: string
 }
+
+export type Vote = {
+  id: string
+  titre: string
+  description: string | null
+  anonyme: boolean
+  statuts_eligibles: string[]
+  statut: 'brouillon' | 'ouvert' | 'archive'
+  date_fin: string | null
+  cree_par: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type VoteQuestion = {
+  id: string
+  vote_id: string
+  libelle: string
+  type: 'oui_non' | 'choix_unique' | 'choix_multiple'
+  ordre: number
+  created_at: string
+}
+
+export type VoteOption = {
+  id: string
+  question_id: string
+  libelle: string
+  ordre: number
+}
+
+export type VoteReponse = {
+  id: string
+  vote_id: string
+  question_id: string
+  membre_id: string
+  valeur_oui_non: boolean | null
+  option_ids: string[] | null
+  created_at: string
+}

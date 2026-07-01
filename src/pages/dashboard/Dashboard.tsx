@@ -4,10 +4,12 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase, Evenement } from '../../lib/supabase'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
 
+
 export default function Dashboard() {
   const { user, isAdmin, loading } = useAuth()
   const navigate = useNavigate()
   const [prochainsEvenements, setProchainsEvenements] = useState<Evenement[]>([])
+  const [votesEnCours, setVotesEnCours] = useState(0)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -24,6 +26,11 @@ export default function Dashboard() {
       .order('date_debut', { ascending: true })
       .limit(5)
       .then(({ data }) => setProchainsEvenements(data || []))
+    supabase
+      .from('votes')
+      .select('id', { count: 'exact', head: true })
+      .eq('statut', 'ouvert')
+      .then(({ count }) => setVotesEnCours(count || 0))
   }, [user])
 
   if (loading) {
@@ -98,10 +105,10 @@ export default function Dashboard() {
             <p className="text-sm text-brand-ink/70">Statuts, règlement, archives</p>
           </Link>
 
-          <Link to="/cotisations" className="signature-card block">
-            <span className="absolute top-0 left-0 h-1 w-12 bg-brand-petrol" />
+          <Link to="/cotisations" className="signature-card signature-coral block">
+            <span className="absolute top-0 left-0 h-1 w-12 bg-brand-sky" />
             <h3 className="font-display font-bold uppercase text-xl mt-sm mb-xs">Cotisations</h3>
-            <p className="text-sm text-brand-ink/70">Suivi annuel des paiements</p>
+            <p className="text-sm opacity-90">Suivi annuel des paiements</p>
           </Link>
 
           <Link to="/calendrier" className="signature-card block">
@@ -110,10 +117,23 @@ export default function Dashboard() {
             <p className="text-sm text-brand-ink/70">Événements et AG</p>
           </Link>
 
-          <Link to="/mon-compte" className="signature-card block">
+          <Link to="/mon-compte" className="signature-card signature-coral block">
             <span className="absolute top-0 left-0 h-1 w-12 bg-brand-sky" />
             <h3 className="font-display font-bold uppercase text-xl mt-sm mb-xs">Mon compte</h3>
-            <p className="text-sm text-brand-ink/70">Changer mon mot de passe</p>
+            <p className="text-sm opacity-90">Changer mon mot de passe</p>
+          </Link>
+
+          <Link to="/votes" className="signature-card block">
+            <span className="absolute top-0 left-0 h-1 w-12 bg-brand-brick" />
+            <div className="flex items-start justify-between mt-sm mb-xs">
+              <h3 className="font-display font-bold uppercase text-xl">Votes</h3>
+              {votesEnCours > 0 && (
+                <span className="bg-brand-brick text-brand-parchment text-xs font-bold px-sm py-xxs leading-none">
+                  {votesEnCours} en cours
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-brand-ink/70">Scrutins et votes associatifs</p>
           </Link>
         </div>
       </main>
