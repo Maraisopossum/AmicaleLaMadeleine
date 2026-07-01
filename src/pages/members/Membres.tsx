@@ -29,6 +29,12 @@ export default function Membres() {
   const navigate = useNavigate()
 
   const [sortBy, setSortBy] = useState<'nom' | 'prenom' | 'role' | 'statut' | 'notifications_active'>('nom')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (col: typeof sortBy) => {
+    if (col === sortBy) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState<NouveauMembre>(MEMBRE_VIDE)
@@ -264,8 +270,8 @@ export default function Membres() {
                   const labels: Record<string, string> = { nom: 'Nom', prenom: 'Prénom', role: 'Rôle', statut: 'Statut', notifications_active: 'Notifications' }
                   return (
                     <th key={col} className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
-                      <button onClick={() => setSortBy(col)} className={`hover:text-brand-sky transition-colors ${sortBy === col ? 'text-brand-sky' : ''}`}>
-                        {labels[col]} {sortBy === col && '↑'}
+                      <button onClick={() => handleSort(col)} className={`hover:text-brand-sky transition-colors ${sortBy === col ? 'text-brand-sky' : ''}`}>
+                        {labels[col]} {sortBy === col && (sortDir === 'asc' ? '↑' : '↓')}
                       </button>
                     </th>
                   )
@@ -282,7 +288,8 @@ export default function Membres() {
               {[...membres].sort((a, b) => {
                 const va = String(a[sortBy] ?? '')
                 const vb = String(b[sortBy] ?? '')
-                return va.localeCompare(vb, 'fr', { sensitivity: 'base' })
+                const cmp = va.localeCompare(vb, 'fr', { sensitivity: 'base' })
+                return sortDir === 'asc' ? cmp : -cmp
               }).map((membre, i) => (
                 <tr
                   key={membre.id}

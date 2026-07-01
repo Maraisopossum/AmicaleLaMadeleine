@@ -9,6 +9,13 @@ export default function Cotisations() {
   const [cotisations, setCotisations] = useState<Cotisation[]>([])
   const [annee, setAnnee] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
+  const [sortBy, setSortBy] = useState<'nom' | 'statut' | 'paye'>('nom')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (col: 'nom' | 'statut' | 'paye') => {
+    if (col === sortBy) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
   const { user, isAdmin, loading: authLoading } = useAuth()
   const navigate = useNavigate()
 
@@ -37,19 +44,24 @@ export default function Cotisations() {
 
   const validerPaiement = async (membreId: string) => {
     if (!isAdmin) return
-
-    // Volontairement irréversible : une fois payée, une cotisation ne doit
-    // plus pouvoir être repassée à "non payée" depuis l'interface.
     const { error } = await supabase.from('cotisations').upsert({
       membre_id: membreId,
       annee,
       paye: true,
       date_paiement: new Date().toISOString(),
     })
+    if (!error) fetchData()
+  }
 
-    if (!error) {
-      fetchData()
-    }
+  const annulerPaiement = async (membreId: string) => {
+    if (!isAdmin) return
+    const cotisation = cotisations.find(c => c.membre_id === membreId)
+    if (!cotisation) return
+    const { error } = await supabase
+      .from('cotisations')
+      .update({ paye: false, date_paiement: null })
+      .eq('id', cotisation.id)
+    if (!error) fetchData()
   }
 
   if (authLoading || loading) {
@@ -96,16 +108,30 @@ export default function Cotisations() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Nom</th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Statut</th>
-                <th className="text-center py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Cotisation</th>
+                {([['nom', 'Nom', 'text-left'], ['statut', 'Statut', 'text-left'], ['paye', 'Cotisation', 'text-center']] as const).map(([col, label, align]) => (
+                  <th key={col} className={`${align} py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]`}>
+                    <button onClick={() => handleSort(col)} className={`hover:text-brand-sky transition-colors ${sortBy === col ? 'text-brand-sky' : ''}`}>
+                      {label} {sortBy === col && (sortDir === 'asc' ? '↑' : '↓')}
+                    </button>
+                  </th>
+                ))}
                 {isAdmin && (
                   <th className="text-center py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Actions</th>
                 )}
               </tr>
             </thead>
             <tbody>
-              {membres.map((membre, i) => {
+              {[...membres].sort((a, b) => {
+                let cmp: number
+                if (sortBy === 'paye') {
+                  const pa = cotisations.find(c => c.membre_id === a.id)?.paye ?? false
+                  const pb = cotisations.find(c => c.membre_id === b.id)?.paye ?? false
+                  cmp = Number(pa) - Number(pb)
+                } else {
+                  cmp = String(a[sortBy] ?? '').localeCompare(String(b[sortBy] ?? ''), 'fr', { sensitivity: 'base' })
+                }
+                return sortDir === 'asc' ? cmp : -cmp
+              }).map((membre, i) => {
                 const cotisation = cotisations.find(c => c.membre_id === membre.id)
                 return (
                   <tr
@@ -129,7 +155,14 @@ export default function Cotisations() {
                     </td>
                     {isAdmin && (
                       <td className="py-sm px-md text-center">
-                        {!cotisation?.paye && (
+                        {cotisation?.paye ? (
+                          <button
+                            onClick={() => annulerPaiement(membre.id)}
+                            className="text-sm text-brand-brick hover:underline font-semibold"
+                          >
+                            Annuler
+                          </button>
+                        ) : (
                           <button
                             onClick={() => validerPaiement(membre.id)}
                             className="text-sm text-brand-petrol hover:underline font-semibold"

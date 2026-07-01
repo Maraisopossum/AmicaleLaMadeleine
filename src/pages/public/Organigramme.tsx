@@ -19,6 +19,12 @@ export default function Organigramme() {
   const [tousMembres, setTousMembres] = useState<Membre[]>([])
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<'nom' | 'prenom' | 'statut'>('nom')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (col: 'nom' | 'prenom' | 'statut') => {
+    if (col === sortBy) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -38,12 +44,12 @@ export default function Organigramme() {
     setLoading(false)
   }
 
-  const membresSimples = useMemo(
-    () => tousMembres
+  const membresSimples = useMemo(() => {
+    const sorted = tousMembres
       .filter((m) => !POSTES_UNIQUES.includes(m.role))
-      .sort((a, b) => (a[sortBy] ?? '').localeCompare(b[sortBy] ?? '', 'fr', { sensitivity: 'base' })),
-    [tousMembres, sortBy]
-  )
+      .sort((a, b) => (a[sortBy] ?? '').localeCompare(b[sortBy] ?? '', 'fr', { sensitivity: 'base' }))
+    return sortDir === 'desc' ? sorted.reverse() : sorted
+  }, [tousMembres, sortBy, sortDir])
 
   const handleAssignPoste = async (role: string, membreId: string) => {
     const ancien = tousMembres.find((m) => m.role === role)
@@ -142,21 +148,13 @@ export default function Organigramme() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
-                  <button onClick={() => setSortBy('nom')} className={`hover:text-brand-sky transition-colors ${sortBy === 'nom' ? 'text-brand-sky' : ''}`}>
-                    Nom {sortBy === 'nom' && '↑'}
-                  </button>
-                </th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
-                  <button onClick={() => setSortBy('prenom')} className={`hover:text-brand-sky transition-colors ${sortBy === 'prenom' ? 'text-brand-sky' : ''}`}>
-                    Prénom {sortBy === 'prenom' && '↑'}
-                  </button>
-                </th>
-                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
-                  <button onClick={() => setSortBy('statut')} className={`hover:text-brand-sky transition-colors ${sortBy === 'statut' ? 'text-brand-sky' : ''}`}>
-                    Statut {sortBy === 'statut' && '↑'}
-                  </button>
-                </th>
+                {(['nom', 'prenom', 'statut'] as const).map(col => (
+                  <th key={col} className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">
+                    <button onClick={() => handleSort(col)} className={`hover:text-brand-sky transition-colors ${sortBy === col ? 'text-brand-sky' : ''}`}>
+                      {{ nom: 'Nom', prenom: 'Prénom', statut: 'Statut' }[col]} {sortBy === col && (sortDir === 'asc' ? '↑' : '↓')}
+                    </button>
+                  </th>
+                ))}
                 {canManageMembres && (
                   <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]"></th>
                 )}
