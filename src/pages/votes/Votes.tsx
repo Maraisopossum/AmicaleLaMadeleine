@@ -10,9 +10,10 @@ type NouvelleQuestion = {
   libelle: string
   type: 'oui_non' | 'choix_unique' | 'choix_multiple'
   options: string[]
+  max_choix: number | null
 }
 
-const QUESTION_VIDE: NouvelleQuestion = { libelle: '', type: 'oui_non', options: [] }
+const QUESTION_VIDE: NouvelleQuestion = { libelle: '', type: 'oui_non', options: [], max_choix: null }
 
 export default function Votes() {
   const [votes, setVotes] = useState<Vote[]>([])
@@ -118,7 +119,7 @@ export default function Votes() {
     for (const [i, q] of questions.entries()) {
       const { data: question, error: qError } = await supabase
         .from('vote_questions')
-        .insert({ vote_id: vote.id, libelle: q.libelle.trim(), type: q.type, ordre: i })
+        .insert({ vote_id: vote.id, libelle: q.libelle.trim(), type: q.type, ordre: i, max_choix: q.type === 'choix_multiple' ? q.max_choix : null })
         .select()
         .single()
       if (qError || !question) { setFormError(qError?.message || 'Erreur création question.'); setSaving(false); return }
@@ -382,15 +383,29 @@ export default function Votes() {
                         onChange={e => updateQuestion(qi, { libelle: e.target.value })}
                         className="w-full border border-brand-hairline bg-brand-paper px-md py-sm mb-sm focus:outline-none focus:border-brand-petrol"
                       />
-                      <select
-                        value={q.type}
-                        onChange={e => updateQuestion(qi, { type: e.target.value as NouvelleQuestion['type'], options: [] })}
-                        className="border border-brand-hairline bg-brand-paper px-md py-sm mb-sm focus:outline-none focus:border-brand-petrol"
-                      >
-                        <option value="oui_non">Oui / Non</option>
-                        <option value="choix_unique">Choix unique</option>
-                        <option value="choix_multiple">Choix multiple</option>
-                      </select>
+                      <div className="flex items-center gap-md flex-wrap mb-sm">
+                        <select
+                          value={q.type}
+                          onChange={e => updateQuestion(qi, { type: e.target.value as NouvelleQuestion['type'], options: [], max_choix: null })}
+                          className="border border-brand-hairline bg-brand-paper px-md py-sm focus:outline-none focus:border-brand-petrol"
+                        >
+                          <option value="oui_non">Oui / Non</option>
+                          <option value="choix_unique">Choix unique</option>
+                          <option value="choix_multiple">Choix multiple</option>
+                        </select>
+                        {q.type === 'choix_multiple' && (
+                          <label className="flex items-center gap-sm text-sm">
+                            <span className="text-brand-ink/60">Max. choix :</span>
+                            <input
+                              type="number" min={1} max={q.options.length || undefined}
+                              placeholder="Illimité"
+                              value={q.max_choix ?? ''}
+                              onChange={e => updateQuestion(qi, { max_choix: e.target.value ? Number(e.target.value) : null })}
+                              className="w-20 border border-brand-hairline bg-brand-paper px-sm py-xs focus:outline-none focus:border-brand-petrol"
+                            />
+                          </label>
+                        )}
+                      </div>
 
                       {q.type !== 'oui_non' && (
                         <div className="mt-sm space-y-xs">

@@ -140,6 +140,7 @@ export type VoteQuestion = {
   libelle: string
   type: 'oui_non' | 'choix_unique' | 'choix_multiple'
   ordre: number
+  max_choix: number | null
   created_at: string
 }
 

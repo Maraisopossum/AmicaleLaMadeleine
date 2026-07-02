@@ -66,13 +66,14 @@ export default function VotePage() {
   const handleReponse = (questionId: string, patch: ReponseLocale) =>
     setReponses(prev => ({ ...prev, [questionId]: patch }))
 
-  const handleToggleOption = (questionId: string, optionId: string, multiple: boolean) => {
+  const handleToggleOption = (questionId: string, optionId: string, multiple: boolean, maxChoix: number | null) => {
     const current = reponses[questionId]?.option_ids || []
     if (multiple) {
-      const next = current.includes(optionId)
-        ? current.filter(id => id !== optionId)
-        : [...current, optionId]
-      handleReponse(questionId, { option_ids: next })
+      if (current.includes(optionId)) {
+        handleReponse(questionId, { option_ids: current.filter(id => id !== optionId) })
+      } else if (maxChoix === null || current.length < maxChoix) {
+        handleReponse(questionId, { option_ids: [...current, optionId] })
+      }
     } else {
       handleReponse(questionId, { option_ids: [optionId] })
     }
@@ -253,15 +254,22 @@ export default function VotePage() {
                       )}
                       {q.type !== 'oui_non' && (
                         <div className="space-y-sm">
+                          {q.type === 'choix_multiple' && q.max_choix && (
+                            <p className="text-xs text-brand-ink/50">
+                              {(reponses[q.id]?.option_ids || []).length} / {q.max_choix} choix sélectionné{q.max_choix > 1 ? 's' : ''}
+                            </p>
+                          )}
                           {q.options.map(o => {
                             const selected = (reponses[q.id]?.option_ids || []).includes(o.id)
+                            const atMax = q.type === 'choix_multiple' && q.max_choix !== null && (reponses[q.id]?.option_ids || []).length >= q.max_choix && !selected
                             return (
-                              <label key={o.id} className={`flex items-center gap-sm cursor-pointer border px-md py-sm transition-colors ${selected ? 'border-brand-petrol bg-brand-petrol/10 text-brand-petrol font-semibold' : 'border-brand-hairline hover:border-brand-petrol/50'}`}>
+                              <label key={o.id} className={`flex items-center gap-sm border px-md py-sm transition-colors ${atMax ? 'cursor-not-allowed opacity-40 border-brand-hairline' : 'cursor-pointer'} ${selected ? 'border-brand-petrol bg-brand-petrol/10 text-brand-petrol font-semibold' : !atMax ? 'border-brand-hairline hover:border-brand-petrol/50' : ''}`}>
                                 <input
                                   type={q.type === 'choix_multiple' ? 'checkbox' : 'radio'}
                                   name={q.id} className="sr-only"
                                   checked={selected}
-                                  onChange={() => handleToggleOption(q.id, o.id, q.type === 'choix_multiple')}
+                                  disabled={atMax}
+                                  onChange={() => handleToggleOption(q.id, o.id, q.type === 'choix_multiple', q.max_choix)}
                                 />
                                 {o.libelle}
                               </label>
