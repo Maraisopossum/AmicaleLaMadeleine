@@ -106,7 +106,7 @@ export default function Organigramme() {
       <div className="chevron-band" />
 
       {/* BUREAU */}
-      <section className="py-section px-xl max-w-6xl mx-auto">
+      <section className="py-section px-md md:px-xl max-w-6xl mx-auto">
         <h2 className="font-display font-bold uppercase text-3xl md:text-4xl mb-xs">Le bureau actuel</h2>
         {canManageMembres && (
           <p className="text-sm text-brand-ink/50 mb-xl">Choisis le membre qui occupe chaque poste.</p>
@@ -141,10 +141,10 @@ export default function Organigramme() {
       </section>
 
       {/* MEMBRES — registre d'appel */}
-      <section className="py-section px-xl max-w-6xl mx-auto">
+      <section className="py-section px-md md:px-xl max-w-6xl mx-auto">
         <h2 className="font-display font-bold uppercase text-3xl md:text-4xl mb-xl">Membres de l'amicale</h2>
 
-        <div className="border border-brand-hairline bg-brand-paper">
+        <div className="border border-brand-hairline bg-brand-paper overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
