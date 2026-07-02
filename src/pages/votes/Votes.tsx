@@ -323,7 +323,7 @@ export default function Votes() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-md mb-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
                   <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date de clôture</label>
                   <input

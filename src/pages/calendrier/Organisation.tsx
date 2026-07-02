@@ -406,7 +406,7 @@ function DeadlinesPanel({
       {!deadlines.length && <p className="text-sm text-brand-ink/50">Aucune deadline pour le moment.</p>}
 
       {(peutCreerGlobale || standsGerables.length > 0) && (
-        <div className="grid grid-cols-[1fr_140px_160px_auto] gap-sm pt-md border-t border-brand-hairline items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_160px_auto] gap-sm pt-md border-t border-brand-hairline items-start">
           <input
             value={libelle}
             onChange={(e) => setLibelle(e.target.value)}
@@ -487,7 +487,7 @@ function PlanningPanel({
       return <p className="text-sm text-brand-ink/50">Le planning n'a pas encore été configuré par le bureau.</p>
     }
     return (
-      <div className="grid grid-cols-3 gap-md max-w-md">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-md max-w-md">
         <div>
           <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
           <input type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
@@ -572,7 +572,7 @@ function PlanningPanel({
         )}
       </div>
 
-      <div id="planning-impression" className="border border-brand-hairline rounded-xs">
+      <div id="planning-impression" className="border border-brand-hairline rounded-xs overflow-x-auto">
         <table className="w-full table-fixed text-[11px] print:text-sm border-collapse">
           <thead>
             <tr>

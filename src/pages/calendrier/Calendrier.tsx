@@ -247,7 +247,7 @@ END:VCALENDAR`
             {semaines.flat().map((jour, i) => (
               <div
                 key={i}
-                className={`bg-brand-paper min-h-[64px] p-xs ${jour && isToday(jour.date) ? 'ring-2 ring-inset ring-brand-petrol' : ''}`}
+                className={`bg-brand-paper min-h-[40px] md:min-h-[64px] p-xxs md:p-xs ${jour && isToday(jour.date) ? 'ring-2 ring-inset ring-brand-petrol' : ''}`}
               >
                 {jour && (
                   <>
@@ -379,7 +379,7 @@ END:VCALENDAR`
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-md mb-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
                   <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Type</label>
                   <select
@@ -400,7 +400,7 @@ END:VCALENDAR`
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-md mb-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
                   <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
                   <input

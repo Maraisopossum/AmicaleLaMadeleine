@@ -262,7 +262,7 @@ export default function Membres() {
           </div>
         )}
 
-        <div className="border border-brand-hairline bg-brand-paper">
+        <div className="border border-brand-hairline bg-brand-paper overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
@@ -374,7 +374,7 @@ export default function Membres() {
             {addError && (
               <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm">{addError}</div>
             )}
-            <div className="grid grid-cols-2 gap-md mb-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
               <Field label="Prénom">
                 <input
                   required
@@ -401,7 +401,7 @@ export default function Membres() {
                 className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-md mb-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-lg">
               <Field label="Rôle">
                 <select
                   value={addForm.role}

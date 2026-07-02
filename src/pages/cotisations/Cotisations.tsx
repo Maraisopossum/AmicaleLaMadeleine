@@ -104,7 +104,7 @@ export default function Cotisations() {
           </span>
         </div>
 
-        <div className="border border-brand-hairline bg-brand-paper">
+        <div className="border border-brand-hairline bg-brand-paper overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
