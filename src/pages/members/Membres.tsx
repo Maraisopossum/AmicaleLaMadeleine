@@ -46,7 +46,7 @@ export default function Membres() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [creatingAccessId, setCreatingAccessId] = useState<string | null>(null)
-  const [accessModal, setAccessModal] = useState<{ email: string; password: string } | null>(null)
+  const [accessModal, setAccessModal] = useState<{ email: string } | null>(null)
   const [accessError, setAccessError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -152,7 +152,7 @@ export default function Membres() {
     setAccessError(null)
 
     const { data, error } = await supabase.functions.invoke('create-membre-access', {
-      body: { membreId: membre.id },
+      body: { membreId: membre.id, redirectTo: `${window.location.origin}/mon-compte` },
     })
 
     setCreatingAccessId(null)
@@ -175,7 +175,7 @@ export default function Membres() {
     } else if (data?.error) {
       setAccessError(data.error)
     } else {
-      setAccessModal({ email: data.email, password: data.password })
+      setAccessModal({ email: data.email })
       fetchMembres()
     }
   }
@@ -344,8 +344,8 @@ export default function Membres() {
                           className="text-xs text-brand-petrol hover:underline font-semibold disabled:opacity-50"
                         >
                           {creatingAccessId === membre.id
-                            ? (membre.a_un_compte ? 'Réinitialisation…' : 'Création…')
-                            : (membre.a_un_compte ? 'Réinitialiser le mot de passe' : 'Créer un accès')}
+                            ? (membre.a_un_compte ? 'Envoi en cours…' : 'Envoi en cours…')
+                            : (membre.a_un_compte ? 'Envoyer lien de réinitialisation' : 'Envoyer invitation')}
                         </button>
                       </div>
                     </td>
@@ -435,27 +435,17 @@ export default function Membres() {
 
       {accessModal && (
         <Modal onClose={() => setAccessModal(null)}>
-          <h2 className="font-display font-bold uppercase text-xl mb-sm">Accès créé</h2>
+          <h2 className="font-display font-bold uppercase text-xl mb-sm">Email envoyé</h2>
           <p className="text-sm text-brand-ink/70 mb-lg">
-            Ce mot de passe ne sera plus jamais affiché — note-le maintenant pour le transmettre au membre.
+            Un lien a été envoyé à l'adresse ci-dessous. Le membre pourra choisir son mot de passe en cliquant dessus.
           </p>
-          <div className="border border-brand-hairline bg-brand-parchment p-md mb-md">
+          <div className="border border-brand-hairline bg-brand-parchment p-md mb-lg">
             <p className="text-xs uppercase tracking-[0.1em] text-brand-petrol font-semibold mb-xxs">Email</p>
-            <p className="font-medium mb-md">{accessModal.email}</p>
-            <p className="text-xs uppercase tracking-[0.1em] text-brand-petrol font-semibold mb-xxs">Mot de passe</p>
-            <p className="font-display text-lg tracking-wide">{accessModal.password}</p>
+            <p className="font-medium">{accessModal.email}</p>
           </div>
-          <div className="flex gap-sm">
-            <button
-              className="btn-primary flex-1"
-              onClick={() => navigator.clipboard.writeText(accessModal.password)}
-            >
-              Copier le mot de passe
-            </button>
-            <button className="btn-secondary flex-1" onClick={() => setAccessModal(null)}>
-              Fermer
-            </button>
-          </div>
+          <button className="btn-primary w-full" onClick={() => setAccessModal(null)}>
+            Fermer
+          </button>
         </Modal>
       )}
 
