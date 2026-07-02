@@ -49,7 +49,7 @@ export default function Cotisations() {
       annee,
       paye: true,
       date_paiement: new Date().toISOString(),
-    })
+    }, { onConflict: 'membre_id,annee' })
     if (!error) fetchData()
   }
 
