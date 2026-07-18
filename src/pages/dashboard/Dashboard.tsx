@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase, Evenement } from '../../lib/supabase'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
 
 
 export default function Dashboard() {
   const { user, isAdmin, loading } = useAuth()
-  const navigate = useNavigate()
   const [prochainsEvenements, setProchainsEvenements] = useState<Evenement[]>([])
   const [votesEnCours, setVotesEnCours] = useState(0)
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login')
-    }
-  }, [loading, user, navigate])
 
   useEffect(() => {
     if (!user) return
@@ -39,10 +32,6 @@ export default function Dashboard() {
         <p className="eyebrow">Chargement…</p>
       </div>
     )
-  }
-
-  if (!user) {
-    return null
   }
 
   return (

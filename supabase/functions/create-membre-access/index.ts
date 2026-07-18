@@ -1,13 +1,17 @@
 // Edge Function : crée OU réinitialise le compte de connexion (Supabase Auth)
-// d'un membre existant de la table `membres`.
+// d'un membre existant de la table `membres`, en lui attribuant un mot de
+// passe temporaire — sans envoyer d'email (le SMTP intégré de Supabase est
+// limité à quelques envois par heure, insuffisant pour un onboarding en masse
+// et aucun nom de domaine n'est disponible pour un SMTP personnalisé).
 //
-// - Nouveau compte  : inviteUserByEmail → Supabase envoie un email d'invitation
-//   avec un lien permettant au membre de choisir son mot de passe.
-// - Compte existant : resetPasswordForEmail → Supabase envoie un email de
-//   récupération avec un lien de réinitialisation du mot de passe.
+// Le mot de passe temporaire est retourné en clair à l'appelant (le bureau),
+// qui le communique au membre hors email (oral, papier). Le membre est
+// contraint de le changer à sa première connexion via le flag
+// `doit_changer_mdp` (voir 20240121000000_membres_doit_changer_mdp.sql).
 //
-// Dans les deux cas l'appelant reçoit { sent: true, email } — aucun mot de
-// passe n'est généré ni transmis.
+// - Nouveau compte  : auth.admin.createUser() avec email_confirm: true (aucune
+//   confirmation par email envoyée).
+// - Compte existant : auth.admin.updateUserById() sur l'auth_user_id stocké.
 //
 // Sécurité : la création/modification de compte nécessite la clé service_role,
 // qui ne doit jamais être exposée côté client. Cette fonction vérifie d'abord,
@@ -28,6 +32,16 @@ const CORS_HEADERS = {
 }
 
 const ROLES_BUREAU = ['president', 'tresorier', 'secretaire', 'adjoint_president', 'adjoint_secretaire', 'adjoint_tresorier']
+
+// Alphabet sans caractères ambigus (0/O, 1/l/I exclus) : pensé pour être
+// recopié à la main depuis une feuille imprimée.
+const PASSWORD_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+
+function generateTempPassword(length = 10): string {
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => PASSWORD_ALPHABET[b % PASSWORD_ALPHABET.length]).join('')
+}
 
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
@@ -71,14 +85,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Réservé au bureau.' }, 403)
     }
 
-    const { membreId, redirectTo } = await req.json()
+    const { membreId } = await req.json()
     if (!membreId) {
       return jsonResponse({ error: 'membreId manquant.' }, 400)
     }
 
     const { data: cible, error: cibleError } = await callerClient
       .from('membres')
-      .select('id, email, a_un_compte')
+      .select('id, email, a_un_compte, auth_user_id')
       .eq('id', membreId)
       .maybeSingle()
 
@@ -87,42 +101,54 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
-    const inviteRedirect = redirectTo || `${supabaseUrl}/mon-compte`
+    const tempPassword = generateTempPassword()
 
     if (cible.a_un_compte) {
-      // Réinitialisation : envoie un email de récupération de mot de passe.
-      const { error: resetError } = await adminClient.auth.resetPasswordForEmail(cible.email, {
-        redirectTo: inviteRedirect,
-      })
-      if (resetError) {
-        return jsonResponse({ error: resetError.message }, 500)
+      // Réinitialisation : écrase le mot de passe du compte existant.
+      if (!cible.auth_user_id) {
+        return jsonResponse({ error: 'Compte marqué actif mais sans auth_user_id — incohérence à corriger manuellement.' }, 500)
       }
-      return jsonResponse({ sent: true, email: cible.email }, 200)
+      const { error: updateAuthError } = await adminClient.auth.admin.updateUserById(cible.auth_user_id, {
+        password: tempPassword,
+      })
+      if (updateAuthError) {
+        return jsonResponse({ error: updateAuthError.message }, 500)
+      }
+      const { error: updateError } = await adminClient
+        .from('membres')
+        .update({ doit_changer_mdp: true })
+        .eq('id', membreId)
+      if (updateError) {
+        return jsonResponse({ error: updateError.message }, 500)
+      }
+      return jsonResponse({ email: cible.email, password: tempPassword }, 200)
     }
 
-    // Création : invite le membre par email — il choisira son mot de passe en cliquant le lien.
-    const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(cible.email, {
-      redirectTo: inviteRedirect,
+    // Création : compte + mot de passe temporaire, aucun email envoyé.
+    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+      email: cible.email,
+      password: tempPassword,
+      email_confirm: true,
     })
 
-    if (inviteError || !invited.user) {
-      const dejaExistant = inviteError?.message.toLowerCase().includes('already')
+    if (createError || !created.user) {
+      const dejaExistant = createError?.message.toLowerCase().includes('already')
       return jsonResponse(
-        { error: dejaExistant ? 'Un compte existe déjà pour cet email.' : inviteError?.message },
+        { error: dejaExistant ? 'Un compte existe déjà pour cet email.' : createError?.message },
         dejaExistant ? 409 : 500
       )
     }
 
     const { error: updateError } = await adminClient
       .from('membres')
-      .update({ a_un_compte: true, auth_user_id: invited.user.id })
+      .update({ a_un_compte: true, auth_user_id: created.user.id, doit_changer_mdp: true })
       .eq('id', membreId)
 
     if (updateError) {
       return jsonResponse({ error: updateError.message }, 500)
     }
 
-    return jsonResponse({ sent: true, email: cible.email }, 200)
+    return jsonResponse({ email: cible.email, password: tempPassword }, 200)
   } catch (err) {
     return jsonResponse({ error: err instanceof Error ? err.message : 'Erreur inattendue.' }, 500)
   }

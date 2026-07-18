@@ -19,6 +19,7 @@ export type Membre = {
   date_nomination: string | null
   notifications_active: boolean
   a_un_compte: boolean
+  doit_changer_mdp: boolean
   created_at: string
   updated_at: string
 }

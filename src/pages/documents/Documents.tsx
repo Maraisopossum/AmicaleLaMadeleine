@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { supabase, Document } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -10,7 +10,6 @@ export default function Documents() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const { user, isAdmin, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const showArchive = searchParams.get('archive') === '1'
 
@@ -21,12 +20,6 @@ export default function Documents() {
   const [fichier, setFichier] = useState<File | null>(null)
   const [uploadError, setUploadError] = useState('')
   const [uploading, setUploading] = useState(false)
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login')
-    }
-  }, [authLoading, user, navigate])
 
   useEffect(() => {
     if (user) {
@@ -108,10 +101,6 @@ export default function Documents() {
         <p className="eyebrow">Chargement…</p>
       </div>
     )
-  }
-
-  if (!user) {
-    return null
   }
 
   return (

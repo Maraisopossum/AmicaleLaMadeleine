@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import RequireAuth from './components/RequireAuth'
 import Welcome from './pages/public/Welcome'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/dashboard/Dashboard'
@@ -20,15 +21,15 @@ function App() {
         <Route path="/" element={<Welcome />} />
         <Route path="/organigramme" element={<Organigramme />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/membres" element={<Membres />} />
-        <Route path="/documents" element={<Documents />} />
-        <Route path="/cotisations" element={<Cotisations />} />
-        <Route path="/calendrier" element={<Calendrier />} />
-        <Route path="/calendrier/:id" element={<Evenement />} />
-        <Route path="/mon-compte" element={<MonCompte />} />
-        <Route path="/votes" element={<Votes />} />
-        <Route path="/votes/:id" element={<VotePage />} />
+        <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+        <Route path="/membres" element={<RequireAuth><Membres /></RequireAuth>} />
+        <Route path="/documents" element={<RequireAuth><Documents /></RequireAuth>} />
+        <Route path="/cotisations" element={<RequireAuth><Cotisations /></RequireAuth>} />
+        <Route path="/calendrier" element={<RequireAuth><Calendrier /></RequireAuth>} />
+        <Route path="/calendrier/:id" element={<RequireAuth><Evenement /></RequireAuth>} />
+        <Route path="/mon-compte" element={<RequireAuth><MonCompte /></RequireAuth>} />
+        <Route path="/votes" element={<RequireAuth><Votes /></RequireAuth>} />
+        <Route path="/votes/:id" element={<RequireAuth><VotePage /></RequireAuth>} />
       </Routes>
     </AuthProvider>
   )

@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
 
 export default function MonCompte() {
   const { user, membre, loading: authLoading, refreshMembre } = useAuth()
-  const navigate = useNavigate()
 
   const [nouveauMdp, setNouveauMdp] = useState('')
   const [confirmation, setConfirmation] = useState('')
@@ -19,12 +17,6 @@ export default function MonCompte() {
   const [profilError, setProfilError] = useState('')
   const [profilSuccess, setProfilSuccess] = useState(false)
   const [savingProfil, setSavingProfil] = useState(false)
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login')
-    }
-  }, [authLoading, user, navigate])
 
   useEffect(() => {
     if (membre) {
@@ -49,15 +41,25 @@ export default function MonCompte() {
 
     setSaving(true)
     const { error: updateError } = await supabase.auth.updateUser({ password: nouveauMdp })
-    setSaving(false)
 
     if (updateError) {
+      setSaving(false)
       setError(updateError.message)
-    } else {
-      setSuccess(true)
-      setNouveauMdp('')
-      setConfirmation('')
+      return
     }
+
+    if (membre?.doit_changer_mdp) {
+      // Lève le flag côté serveur (verrouillé pour l'écriture directe, voir
+      // 20240121000000_membres_doit_changer_mdp.sql) une fois le mot de passe
+      // effectivement changé, pour ne plus être redirigé de force ici.
+      await supabase.rpc('clear_doit_changer_mdp')
+      await refreshMembre()
+    }
+
+    setSaving(false)
+    setSuccess(true)
+    setNouveauMdp('')
+    setConfirmation('')
   }
 
   const handleProfilSubmit = async (e: React.FormEvent) => {
@@ -105,6 +107,12 @@ export default function MonCompte() {
       <div className="chevron-band" />
 
       <main className="max-w-md mx-auto p-xl space-y-xl">
+        {membre?.doit_changer_mdp && (
+          <div className="border border-brand-brick text-brand-brick p-md text-sm">
+            Un mot de passe temporaire t'a été attribué par le bureau. Choisis un nouveau mot de passe ci-dessous pour continuer.
+          </div>
+        )}
+
         {membre && (
           <div className="signature-card">
             <h2 className="font-display font-bold uppercase text-xl mb-lg">Mes informations</h2>

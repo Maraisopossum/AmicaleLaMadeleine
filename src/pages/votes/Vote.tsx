@@ -23,10 +23,6 @@ export default function VotePage() {
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
-    if (!authLoading && !user) navigate('/login')
-  }, [authLoading, user, navigate])
-
-  useEffect(() => {
     if (user && id) fetchVote()
   }, [user, id])
 

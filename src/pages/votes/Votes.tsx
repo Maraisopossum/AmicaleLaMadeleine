@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase, Vote, VoteQuestion, VoteOption } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -22,7 +22,6 @@ export default function Votes() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const { user, isAdmin, membre, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
 
   // Formulaire de création
   const [titre, setTitre] = useState('')
@@ -33,10 +32,6 @@ export default function Votes() {
   const [questions, setQuestions] = useState<NouvelleQuestion[]>([{ ...QUESTION_VIDE }])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
-
-  useEffect(() => {
-    if (!authLoading && !user) navigate('/login')
-  }, [authLoading, user, navigate])
 
   useEffect(() => {
     if (user) fetchData()
@@ -168,8 +163,6 @@ export default function Votes() {
       </div>
     )
   }
-
-  if (!user) return null
 
   const votesOuverts = votes.filter(v => v.statut === 'ouvert')
   const votesBrouillon = votes.filter(v => v.statut === 'brouillon')

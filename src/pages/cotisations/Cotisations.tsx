@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase, Membre, Cotisation } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -17,13 +16,6 @@ export default function Cotisations() {
     else { setSortBy(col); setSortDir('asc') }
   }
   const { user, isAdmin, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login')
-    }
-  }, [authLoading, user, navigate])
 
   useEffect(() => {
     if (user) {
@@ -70,10 +62,6 @@ export default function Cotisations() {
         <p className="eyebrow">Chargement…</p>
       </div>
     )
-  }
-
-  if (!user) {
-    return null
   }
 
   return (

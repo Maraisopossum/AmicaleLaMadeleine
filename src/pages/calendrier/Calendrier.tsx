@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { supabase, Evenement } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -39,8 +39,6 @@ export default function Calendrier() {
     return new Date(d.getFullYear(), d.getMonth(), 1)
   })
   const { user, isAdmin, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
-
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<NouvelEvenement>(EVENEMENT_VIDE)
@@ -75,12 +73,6 @@ export default function Calendrier() {
     await supabase.from('evenements').delete().eq('id', event.id)
     fetchEvenements()
   }
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login')
-    }
-  }, [authLoading, user, navigate])
 
   useEffect(() => {
     if (user) {
@@ -181,9 +173,6 @@ END:VCALENDAR`
     )
   }
 
-  if (!user) {
-    return null
-  }
 
   const aujourdHui = new Date()
   const estMoisCourant =

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase, Membre } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -26,7 +25,6 @@ export default function Membres() {
   const [membres, setMembres] = useState<Membre[]>([])
   const [loading, setLoading] = useState(true)
   const { user, isAdmin, canManageMembres, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
 
   const [sortBy, setSortBy] = useState<'nom' | 'prenom' | 'role' | 'statut' | 'notifications_active'>('nom')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -46,14 +44,12 @@ export default function Membres() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [creatingAccessId, setCreatingAccessId] = useState<string | null>(null)
-  const [accessModal, setAccessModal] = useState<{ email: string } | null>(null)
+  const [accessModal, setAccessModal] = useState<{ email: string; password: string } | null>(null)
   const [accessError, setAccessError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login')
-    }
-  }, [authLoading, user, navigate])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkGenerating, setBulkGenerating] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -147,15 +143,12 @@ export default function Membres() {
     fetchMembres()
   }
 
-  const handleCreateAccess = async (membre: Membre) => {
-    setCreatingAccessId(membre.id)
-    setAccessError(null)
-
+  // Appelle l'edge function pour un membre, retourne le mot de passe temporaire
+  // généré ou lève une erreur avec le message à afficher.
+  const createAccess = async (membre: Membre): Promise<{ email: string; password: string }> => {
     const { data, error } = await supabase.functions.invoke('create-membre-access', {
-      body: { membreId: membre.id, redirectTo: `${window.location.origin}/mon-compte` },
+      body: { membreId: membre.id },
     })
-
-    setCreatingAccessId(null)
 
     if (error) {
       // supabase.functions.invoke masque le corps JSON renvoyé par la fonction
@@ -171,13 +164,78 @@ export default function Membres() {
           // corps non-JSON, on garde le message générique
         }
       }
-      setAccessError(message)
-    } else if (data?.error) {
-      setAccessError(data.error)
-    } else {
-      setAccessModal({ email: data.email })
-      fetchMembres()
+      throw new Error(message)
     }
+    if (data?.error) {
+      throw new Error(data.error)
+    }
+    return { email: data.email, password: data.password }
+  }
+
+  const handleCreateAccess = async (membre: Membre) => {
+    setCreatingAccessId(membre.id)
+    setAccessError(null)
+
+    try {
+      const result = await createAccess(membre)
+      setAccessModal(result)
+      fetchMembres()
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : 'Erreur inattendue.')
+    }
+    setCreatingAccessId(null)
+  }
+
+  const handleBulkCreateAccess = async () => {
+    const cibles = membres.filter((m) => selectedIds.has(m.id))
+    if (!cibles.length) return
+
+    setBulkGenerating(true)
+    setBulkError(null)
+
+    const settled = await Promise.all(
+      cibles.map(async (membre) => {
+        try {
+          const { password } = await createAccess(membre)
+          return { prenom: membre.prenom, nom: membre.nom, email: membre.email, password, error: null as string | null }
+        } catch (err) {
+          return { prenom: membre.prenom, nom: membre.nom, email: membre.email, password: '', error: err instanceof Error ? err.message : 'Erreur inattendue.' }
+        }
+      })
+    )
+
+    setBulkGenerating(false)
+    fetchMembres()
+    setSelectedIds(new Set())
+
+    const echecs = settled.filter((r) => r.error)
+    if (echecs.length) {
+      setBulkError(echecs.map((r) => `${r.prenom} ${r.nom} : ${r.error}`).join('\n'))
+    }
+
+    const reussites = settled.filter((r) => !r.error)
+    if (reussites.length) {
+      const rows = [
+        'prenom,nom,email,mot_de_passe_temporaire',
+        ...reussites.map((r) => `${r.prenom},${r.nom},${r.email},${r.password}`),
+      ]
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `acces_membres_${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   const downloadCsvTemplate = () => {
@@ -203,10 +261,6 @@ export default function Membres() {
     )
   }
 
-  if (!user) {
-    return null
-  }
-
   return (
     <div className="min-h-screen bg-brand-parchment font-body text-brand-ink">
       <ModuleHeader
@@ -228,6 +282,13 @@ export default function Membres() {
             </button>
             <button className="btn-secondary" onClick={downloadCsvTemplate}>
               Télécharger le modèle CSV
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={!selectedIds.size || bulkGenerating}
+              onClick={handleBulkCreateAccess}
+            >
+              {bulkGenerating ? 'Génération en cours…' : `Générer les accès (${selectedIds.size})`}
             </button>
             <input
               ref={fileInputRef}
@@ -266,6 +327,16 @@ export default function Membres() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
+                {isAdmin && (
+                  <th className="text-left py-sm px-md w-8">
+                    <input
+                      type="checkbox"
+                      aria-label="Tout sélectionner"
+                      checked={membres.length > 0 && selectedIds.size === membres.length}
+                      onChange={(e) => setSelectedIds(e.target.checked ? new Set(membres.map((m) => m.id)) : new Set())}
+                    />
+                  </th>
+                )}
                 {(['nom', 'prenom', 'role', 'statut', 'notifications_active'] as const).map((col) => {
                   const labels: Record<string, string> = { nom: 'Nom', prenom: 'Prénom', role: 'Rôle', statut: 'Statut', notifications_active: 'Notifications' }
                   return (
@@ -295,6 +366,16 @@ export default function Membres() {
                   key={membre.id}
                   className={`border-t border-brand-hairline ${i % 2 === 1 ? 'bg-brand-parchment/50' : ''} hover:bg-brand-sky/10`}
                 >
+                  {isAdmin && (
+                    <td className="py-sm px-md">
+                      <input
+                        type="checkbox"
+                        aria-label={`Sélectionner ${membre.prenom} ${membre.nom}`}
+                        checked={selectedIds.has(membre.id)}
+                        onChange={() => toggleSelected(membre.id)}
+                      />
+                    </td>
+                  )}
                   <td className="py-sm px-md font-medium">{membre.nom}</td>
                   <td className="py-sm px-md">{membre.prenom}</td>
                   <td className="py-sm px-md">
@@ -344,8 +425,8 @@ export default function Membres() {
                           className="text-xs text-brand-petrol hover:underline font-semibold disabled:opacity-50"
                         >
                           {creatingAccessId === membre.id
-                            ? (membre.a_un_compte ? 'Envoi en cours…' : 'Envoi en cours…')
-                            : (membre.a_un_compte ? 'Envoyer lien de réinitialisation' : 'Envoyer invitation')}
+                            ? 'Génération en cours…'
+                            : (membre.a_un_compte ? 'Réinitialiser le mot de passe' : 'Générer un accès')}
                         </button>
                       </div>
                     </td>
@@ -435,17 +516,29 @@ export default function Membres() {
 
       {accessModal && (
         <Modal onClose={() => setAccessModal(null)}>
-          <h2 className="font-display font-bold uppercase text-xl mb-sm">Email envoyé</h2>
+          <h2 className="font-display font-bold uppercase text-xl mb-sm">Mot de passe temporaire</h2>
           <p className="text-sm text-brand-ink/70 mb-lg">
-            Un lien a été envoyé à l'adresse ci-dessous. Le membre pourra choisir son mot de passe en cliquant dessus.
+            Ce mot de passe ne sera plus affiché après fermeture de cette fenêtre. Communique-le au membre (oral, papier) — il devra le changer à sa première connexion.
           </p>
-          <div className="border border-brand-hairline bg-brand-parchment p-md mb-lg">
+          <div className="border border-brand-hairline bg-brand-parchment p-md mb-md">
             <p className="text-xs uppercase tracking-[0.1em] text-brand-petrol font-semibold mb-xxs">Email</p>
             <p className="font-medium">{accessModal.email}</p>
           </div>
-          <button className="btn-primary w-full" onClick={() => setAccessModal(null)}>
-            Fermer
-          </button>
+          <div className="border border-brand-hairline bg-brand-parchment p-md mb-lg">
+            <p className="text-xs uppercase tracking-[0.1em] text-brand-petrol font-semibold mb-xxs">Mot de passe temporaire</p>
+            <p className="font-mono text-lg font-bold tracking-wide">{accessModal.password}</p>
+          </div>
+          <div className="flex gap-sm">
+            <button
+              className="btn-secondary flex-1"
+              onClick={() => navigator.clipboard.writeText(accessModal.password)}
+            >
+              Copier
+            </button>
+            <button className="btn-primary flex-1" onClick={() => setAccessModal(null)}>
+              Fermer
+            </button>
+          </div>
         </Modal>
       )}
 
@@ -453,6 +546,19 @@ export default function Membres() {
         <Modal onClose={() => setAccessError(null)}>
           <p className="text-sm text-brand-brick">{accessError}</p>
           <button className="btn-secondary w-full mt-lg" onClick={() => setAccessError(null)}>
+            Fermer
+          </button>
+        </Modal>
+      )}
+
+      {bulkError && (
+        <Modal onClose={() => setBulkError(null)}>
+          <h2 className="font-display font-bold uppercase text-xl mb-sm text-brand-brick">Erreurs lors de la génération</h2>
+          <p className="text-sm text-brand-ink/70 mb-md">
+            Les membres suivants n'ont pas reçu d'accès (les autres, réussis, ont été exportés en CSV) :
+          </p>
+          <pre className="text-sm text-brand-brick whitespace-pre-wrap mb-lg">{bulkError}</pre>
+          <button className="btn-secondary w-full" onClick={() => setBulkError(null)}>
             Fermer
           </button>
         </Modal>

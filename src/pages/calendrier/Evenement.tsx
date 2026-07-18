@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { supabase, Evenement as EvenementType, EvenementSection, ProgrammeItem, Stand } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -8,19 +8,12 @@ import Organisation from './Organisation'
 export default function Evenement() {
   const { id } = useParams<{ id: string }>()
   const { user, membre, isAdmin, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
 
   const [evenement, setEvenement] = useState<EvenementType | null>(null)
   const [sections, setSections] = useState<EvenementSection[]>([])
   const [stands, setStands] = useState<Stand[]>([])
   const [loading, setLoading] = useState(true)
   const [ongletPrincipal, setOngletPrincipal] = useState<'infos' | 'organisation'>('infos')
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login')
-    }
-  }, [authLoading, user, navigate])
 
   useEffect(() => {
     if (user && id) {
@@ -58,8 +51,6 @@ export default function Evenement() {
       </div>
     )
   }
-
-  if (!user) return null
 
   if (!evenement || !evenement.page_dediee) {
     return (
