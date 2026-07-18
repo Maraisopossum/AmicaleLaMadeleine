@@ -15,8 +15,11 @@
 //
 // Sécurité : la création/modification de compte nécessite la clé service_role,
 // qui ne doit jamais être exposée côté client. Cette fonction vérifie d'abord,
-// avec le JWT de l'appelant, que celui-ci fait partie du bureau avant
-// d'utiliser la clé service_role pour l'opération privilégiée.
+// avec le JWT de l'appelant, qu'il est président ou le compte admin fixe —
+// via la RPC is_membre_manager() (20240111000000_membres_gestionnaire.sql),
+// seule source de vérité pour cette permission (déjà utilisée pour la
+// modification de rôle/statut et la suppression d'un membre). Le reste du
+// bureau (trésorier, secrétaire, adjoints) n'a pas accès à cette opération.
 //
 // Déploiement :
 //   supabase functions deploy create-membre-access
@@ -30,8 +33,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-
-const ROLES_BUREAU = ['president', 'tresorier', 'secretaire', 'adjoint_president', 'adjoint_secretaire', 'adjoint_tresorier']
 
 // Alphabet sans caractères ambigus (0/O, 1/l/I exclus) : pensé pour être
 // recopié à la main depuis une feuille imprimée.
@@ -75,14 +76,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Session invalide.' }, 401)
     }
 
-    const { data: caller } = await callerClient
-      .from('membres')
-      .select('role')
-      .eq('email', userData.user.email)
-      .maybeSingle()
+    const { data: isManager, error: managerError } = await callerClient.rpc('is_membre_manager', {
+      p_email: userData.user.email,
+    })
 
-    if (!caller || !ROLES_BUREAU.includes(caller.role)) {
-      return jsonResponse({ error: 'Réservé au bureau.' }, 403)
+    if (managerError || !isManager) {
+      return jsonResponse({ error: 'Réservé au président et à l\'administrateur.' }, 403)
     }
 
     const { membreId } = await req.json()

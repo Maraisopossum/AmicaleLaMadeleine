@@ -283,13 +283,15 @@ export default function Membres() {
             <button className="btn-secondary" onClick={downloadCsvTemplate}>
               Télécharger le modèle CSV
             </button>
-            <button
-              className="btn-secondary"
-              disabled={!selectedIds.size || bulkGenerating}
-              onClick={handleBulkCreateAccess}
-            >
-              {bulkGenerating ? 'Génération en cours…' : `Générer les accès (${selectedIds.size})`}
-            </button>
+            {canManageMembres && (
+              <button
+                className="btn-secondary"
+                disabled={!selectedIds.size || bulkGenerating}
+                onClick={handleBulkCreateAccess}
+              >
+                {bulkGenerating ? 'Génération en cours…' : `Générer les accès (${selectedIds.size})`}
+              </button>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -327,7 +329,7 @@ export default function Membres() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
-                {isAdmin && (
+                {canManageMembres && (
                   <th className="text-left py-sm px-md w-8">
                     <input
                       type="checkbox"
@@ -347,7 +349,7 @@ export default function Membres() {
                     </th>
                   )
                 })}
-                {isAdmin && (
+                {canManageMembres && (
                   <th className="text-left py-sm px-md font-semibold text-xs tracking-[0.15em]">Accès</th>
                 )}
                 {canManageMembres && (
@@ -366,7 +368,7 @@ export default function Membres() {
                   key={membre.id}
                   className={`border-t border-brand-hairline ${i % 2 === 1 ? 'bg-brand-parchment/50' : ''} hover:bg-brand-sky/10`}
                 >
-                  {isAdmin && (
+                  {canManageMembres && (
                     <td className="py-sm px-md">
                       <input
                         type="checkbox"
@@ -413,7 +415,7 @@ export default function Membres() {
                       {membre.notifications_active ? 'Actives' : 'Désactivées'}
                     </span>
                   </td>
-                  {isAdmin && (
+                  {canManageMembres && (
                     <td className="py-sm px-md">
                       <div className="flex flex-col items-start gap-xxs">
                         {membre.a_un_compte && (
