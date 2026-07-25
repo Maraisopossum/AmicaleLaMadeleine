@@ -121,6 +121,7 @@ export default function VotePage() {
   const eligible = membre ? vote.statuts_eligibles.includes(membre.statut) : false
   const peutVoter = vote.statut === 'ouvert' && eligible && !submitted
   const afficherResultats = vote.statut === 'archive'
+  const afficherTendance = vote.statut === 'ouvert' && isAdmin
 
   // Calcule les résultats pour une question
   const getResultats = (q: QuestionAvecOptions) => {
@@ -167,13 +168,20 @@ export default function VotePage() {
           )}
         </div>
 
-        {/* Résultats (après clôture) */}
-        {afficherResultats && (
+        {/* Résultats (après clôture) ou tendance en cours (bureau uniquement) */}
+        {(afficherResultats || afficherTendance) && (
           <div className="mb-xl">
             <div className="mb-lg flex items-center gap-md">
-              <h2 className="font-display font-bold uppercase text-2xl">Résultats</h2>
+              <h2 className="font-display font-bold uppercase text-2xl">
+                {afficherResultats ? 'Résultats' : 'Tendance en cours'}
+              </h2>
               <span className="text-sm text-brand-ink/50">{votantsDistincts} participant{votantsDistincts > 1 ? 's' : ''}</span>
             </div>
+            {afficherTendance && (
+              <p className="text-sm text-brand-ink/50 mb-lg">
+                Visible uniquement par le bureau tant que le vote est en cours — les votants ne voient pas ces chiffres avant la clôture.
+              </p>
+            )}
             <div className="space-y-xl">
               {questions.map(q => {
                 const res = getResultats(q)
