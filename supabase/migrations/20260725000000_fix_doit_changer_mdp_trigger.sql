@@ -11,7 +11,6 @@ BEGIN
     NEW.email := OLD.email;
     NEW.a_un_compte := OLD.a_un_compte;
     NEW.auth_user_id := OLD.auth_user_id;
-    NEW.parent_id := OLD.parent_id;
     IF NEW.doit_changer_mdp = true THEN
       NEW.doit_changer_mdp := OLD.doit_changer_mdp;
     END IF;
