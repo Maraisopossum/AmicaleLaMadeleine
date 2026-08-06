@@ -25,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
 // (supabase/migrations/20240111000000_membres_gestionnaire.sql).
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL as string
 
+// eslint-disable-next-line react-refresh/only-export-components -- useAuth est importé par quasiment toutes les pages ; le déplacer dans un fichier séparé casserait ces imports pour un simple confort de Fast Refresh en dev, pas un bug.
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -74,21 +75,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     getSession()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          const { data } = await supabase
-            .from('membres')
-            .select('*')
-            .eq('email', session.user.email)
-            .single()
-          setMembre(data)
+          const email = session.user.email
+          // Ne pas awaiter de requête Supabase directement dans ce callback :
+          // le client auth tient un verrou pendant son exécution, et une requête
+          // qui a besoin de ce verrou (rafraîchissement de token) resterait
+          // bloquée indéfiniment (deadlock). On défère donc hors du callback.
+          setTimeout(async () => {
+            const { data } = await supabase
+              .from('membres')
+              .select('*')
+              .eq('email', email)
+              .single()
+            setMembre(data)
+            setLoading(false)
+          }, 0)
         } else {
           setMembre(null)
+          setLoading(false)
         }
-
-        setLoading(false)
       }
     )
 
