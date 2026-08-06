@@ -30,6 +30,7 @@ export default function Organisation({ evenement, isAdmin, membreId }: Props) {
 
   useEffect(() => {
     fetchAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evenement.id])
 
   const fetchAll = async () => {

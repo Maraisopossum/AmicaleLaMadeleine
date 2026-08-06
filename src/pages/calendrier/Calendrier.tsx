@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { supabase, Evenement } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
 
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const TYPES_EVENEMENT = ['ag', 'reunion', 'activite', 'formation']
@@ -189,15 +190,21 @@ END:VCALENDAR`
       <div className="chevron-band" />
 
       <main className="max-w-6xl mx-auto p-xl">
-        {isAdmin && (
-          <button className="btn-primary mb-xl" onClick={openCreateForm}>
-            + Ajouter un événement
-          </button>
-        )}
+        <div className="flex items-center justify-between mb-xl gap-md flex-wrap print:hidden">
+          {isAdmin ? (
+            <button className="btn-primary" onClick={openCreateForm}>
+              + Ajouter un événement
+            </button>
+          ) : <span />}
+          <BoutonImprimer targetId="impression-calendrier" titre="Calendrier du mois" orientation="portrait" />
+        </div>
+
+        <div id="impression-calendrier">
+        <EnteteImpression titre={`Calendrier — ${moisAffiche.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`} />
 
         {/* Grille mensuelle */}
         <div className="signature-card mb-xl">
-          <div className="flex items-center justify-between mb-lg">
+          <div className="flex items-center justify-between mb-lg print:hidden">
             <button
               onClick={() => setMoisAffiche(addMonths(moisAffiche, -1))}
               className="btn-secondary text-xs"
@@ -345,6 +352,7 @@ END:VCALENDAR`
             Aucun événement ce mois-ci.
           </div>
         )}
+        </div>
       </main>
 
       {showAddForm && (

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, Membre } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
+import Avatar from '../../components/Layout/Avatar'
 
 const POSTES_UNIQUES = ['president', 'secretaire', 'tresorier', 'adjoint_president', 'adjoint_secretaire', 'adjoint_tresorier']
 const STATUTS = ['actif', 'passif', 'honoraire']
@@ -105,16 +107,23 @@ export default function Organigramme() {
       />
       <div className="chevron-band" />
 
+      <div className="max-w-6xl mx-auto px-md md:px-xl pt-lg flex justify-end print:hidden">
+        <BoutonImprimer targetId="impression-organigramme" titre="Organigramme" orientation="landscape" />
+      </div>
+
+      <div id="impression-organigramme">
+      <EnteteImpression titre="Organigramme et registre des membres" />
+
       {/* BUREAU */}
-      <section className="py-section px-md md:px-xl max-w-6xl mx-auto">
-        <h2 className="font-display font-bold uppercase text-3xl md:text-4xl mb-xs">Le bureau actuel</h2>
+      <section className="py-section print:py-0 px-md md:px-xl max-w-6xl mx-auto">
+        <h2 className="font-display font-bold uppercase text-3xl md:text-4xl print:text-xl mb-xs">Le bureau actuel</h2>
         {canManageMembres && (
-          <p className="text-sm text-brand-ink/50 mb-xl">Choisis le membre qui occupe chaque poste.</p>
+          <p className="text-sm text-brand-ink/50 mb-xl print:hidden">Choisis le membre qui occupe chaque poste.</p>
         )}
 
-        <div className="grid md:grid-cols-3 gap-lg">
+        <div className="grid md:grid-cols-3 print:grid-cols-3 gap-lg print:gap-sm print:mt-sm">
           {BRANCHES.map((branche) => (
-            <div key={branche.roleChef} className="space-y-lg">
+            <div key={branche.roleChef} className="space-y-lg print:space-y-xs">
               <PosteCard
                 titre={branche.titre}
                 role={branche.roleChef}
@@ -124,7 +133,7 @@ export default function Organigramme() {
                 onAssign={handleAssignPoste}
                 onDelete={handleDeleteMembre}
               />
-              <div className="ml-lg border-l-2 border-brand-hairline pl-lg">
+              <div className="ml-lg print:ml-sm border-l-2 border-brand-hairline pl-lg print:pl-sm">
                 <PosteCard
                   titre={`Adjoint au ${branche.titre}`}
                   role={branche.roleAdjoint}
@@ -141,7 +150,7 @@ export default function Organigramme() {
       </section>
 
       {/* MEMBRES — registre d'appel */}
-      <section className="py-section px-md md:px-xl max-w-6xl mx-auto">
+      <section className="py-section print:py-0 print:break-before-page px-md md:px-xl max-w-6xl mx-auto">
         <h2 className="font-display font-bold uppercase text-3xl md:text-4xl mb-xl">Membres de l'amicale</h2>
 
         <div className="border border-brand-hairline bg-brand-paper overflow-x-auto">
@@ -156,7 +165,7 @@ export default function Organigramme() {
                   </th>
                 ))}
                 {canManageMembres && (
-                  <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]"></th>
+                  <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] print:hidden"></th>
                 )}
               </tr>
             </thead>
@@ -166,7 +175,12 @@ export default function Organigramme() {
                   key={membre.id}
                   className={`border-t border-brand-hairline ${i % 2 === 1 ? 'bg-brand-parchment/50' : ''} hover:bg-brand-sky/10`}
                 >
-                  <td className="py-sm px-md font-medium">{membre.nom}</td>
+                  <td className="py-sm px-md font-medium">
+                    <div className="flex items-center gap-sm">
+                      <Avatar prenom={membre.prenom} nom={membre.nom} photoUrl={membre.photo_url} size="sm" />
+                      {membre.nom}
+                    </div>
+                  </td>
                   <td className="py-sm px-md">{membre.prenom}</td>
                   <td className="py-sm px-md">
                     {canManageMembres ? (
@@ -184,7 +198,7 @@ export default function Organigramme() {
                     )}
                   </td>
                   {canManageMembres && (
-                    <td className="py-sm px-md">
+                    <td className="py-sm px-md print:hidden">
                       <button
                         onClick={() => handleDeleteMembre(membre)}
                         className="text-xs text-brand-brick hover:underline font-semibold"
@@ -199,10 +213,11 @@ export default function Organigramme() {
           </table>
         </div>
       </section>
+      </div>
 
-      <div className="chevron-band" />
+      <div className="chevron-band print:hidden" />
 
-      <footer className="bg-brand-ink text-brand-parchment py-xl px-xl">
+      <footer className="bg-brand-ink text-brand-parchment py-xl px-xl print:hidden">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-md">
           <div className="flex items-center gap-sm">
             <img src="/Logo.png" alt="" className="h-8 w-auto opacity-90" />
@@ -237,21 +252,24 @@ function PosteCard({
   const options = [...tousMembres].sort((a, b) => a.nom.localeCompare(b.nom))
 
   return (
-    <div className="relative bg-brand-paper border border-brand-hairline max-w-md pt-lg pb-lg pl-lg pr-lg">
-      <span className="absolute top-0 left-0 h-1 w-12 bg-brand-petrol" />
-      <div className="badge-tag absolute -top-3 right-lg bg-brand-brick text-brand-parchment text-[11px] uppercase tracking-[0.1em] font-semibold px-sm py-xs">
+    <div className="relative bg-brand-paper border border-brand-hairline max-w-md pt-lg pb-lg pl-lg pr-lg print:p-sm print:break-inside-avoid">
+      <span className="absolute top-0 left-0 h-1 w-12 bg-brand-petrol print:hidden" />
+      <div className="badge-tag absolute -top-3 right-lg bg-brand-brick text-brand-parchment text-[11px] uppercase tracking-[0.1em] font-semibold px-sm py-xs print:static print:bg-transparent print:text-brand-ink print:p-0 print:mb-xs print:block">
         {titre}
       </div>
 
       {titulaire ? (
         <>
-          <h3 className="font-display font-bold text-2xl md:text-3xl mt-md leading-none">
-            {titulaire.prenom}
-            <br />
-            {titulaire.nom.toUpperCase()}
-          </h3>
+          <div className="mt-md print:mt-xs flex items-center gap-md print:gap-sm">
+            <Avatar prenom={titulaire.prenom} nom={titulaire.nom} photoUrl={titulaire.photo_url} />
+            <h3 className="font-display font-bold text-2xl md:text-3xl print:text-lg leading-none">
+              {titulaire.prenom}
+              <br />
+              {titulaire.nom.toUpperCase()}
+            </h3>
+          </div>
           {titulaire.date_nomination && (
-            <p className="mt-sm text-brand-petrol text-xs uppercase tracking-[0.12em]">
+            <p className="mt-sm text-brand-petrol text-xs uppercase tracking-[0.12em] print:mt-xxs">
               Nommé(e) le {formatDate(titulaire.date_nomination)}
             </p>
           )}
@@ -261,7 +279,7 @@ function PosteCard({
       )}
 
       {canManageMembres && (
-        <div className="mt-md">
+        <div className="mt-md print:hidden">
           <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
             Titulaire
           </label>
@@ -281,19 +299,11 @@ function PosteCard({
       {canManageMembres && titulaire && (
         <button
           onClick={() => onDelete(titulaire)}
-          className="text-xs text-brand-brick hover:underline font-semibold mt-sm"
+          className="text-xs text-brand-brick hover:underline font-semibold mt-sm print:hidden"
         >
           Supprimer ce membre
         </button>
       )}
-    </div>
-  )
-}
-
-function SectionEyebrow({ code, label }: { code: string; label: string }) {
-  return (
-    <div className="flex items-center gap-sm mb-sm">
-      <span className="uppercase text-xs tracking-[0.2em] text-brand-petrol font-semibold">{label}</span>
     </div>
   )
 }

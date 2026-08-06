@@ -9,7 +9,7 @@ type ModuleHeaderProps = {
   rightSlot?: ReactNode
 }
 
-export default function ModuleHeader({ eyebrowCode, eyebrowLabel, title, subtitle, rightSlot }: ModuleHeaderProps) {
+export default function ModuleHeader({ eyebrowCode: _eyebrowCode, eyebrowLabel, title, subtitle, rightSlot }: ModuleHeaderProps) {
   return (
     <header className="relative overflow-hidden bg-brand-ink grain-overlay">
       <div

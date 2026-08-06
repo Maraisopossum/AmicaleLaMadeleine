@@ -13,6 +13,10 @@ import MonCompte from './pages/compte/MonCompte'
 import Evenement from './pages/calendrier/Evenement'
 import Votes from './pages/votes/Votes'
 import VotePage from './pages/votes/Vote'
+import Idees from './pages/idees/Idees'
+import Taches from './pages/taches/Taches'
+import Reunions from './pages/reunions/Reunions'
+import ReunionDetail from './pages/reunions/ReunionDetail'
 
 function App() {
   return (
@@ -30,6 +34,10 @@ function App() {
         <Route path="/mon-compte" element={<RequireAuth><MonCompte /></RequireAuth>} />
         <Route path="/votes" element={<RequireAuth><Votes /></RequireAuth>} />
         <Route path="/votes/:id" element={<RequireAuth><VotePage /></RequireAuth>} />
+        <Route path="/idees" element={<RequireAuth><Idees /></RequireAuth>} />
+        <Route path="/taches" element={<RequireAuth><Taches /></RequireAuth>} />
+        <Route path="/reunions" element={<RequireAuth><Reunions /></RequireAuth>} />
+        <Route path="/reunions/:id" element={<RequireAuth><ReunionDetail /></RequireAuth>} />
       </Routes>
     </AuthProvider>
   )

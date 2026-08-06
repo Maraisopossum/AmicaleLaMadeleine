@@ -20,6 +20,7 @@ export type Membre = {
   notifications_active: boolean
   a_un_compte: boolean
   doit_changer_mdp: boolean
+  photo_url: string | null
   created_at: string
   updated_at: string
 }
@@ -160,4 +161,56 @@ export type VoteReponse = {
   valeur_oui_non: boolean | null
   option_ids: string[] | null
   created_at: string
+}
+
+export type Idee = {
+  id: string
+  numero_suivi: number
+  titre: string
+  description: string | null
+  membre_id: string
+  statut: 'nouvelle' | 'en_cours' | 'acceptee' | 'refusee' | 'realisee'
+  reponse: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SectionLibre = { titre: string; contenu: string }
+
+export type Reunion = {
+  id: string
+  titre: string
+  date_reunion: string
+  statut: 'brouillon' | 'publie'
+  bureau_uniquement: boolean
+  ordre_du_jour: string | null
+  decisions: string | null
+  prochaines_echeances: string | null
+  sections_libres: SectionLibre[]
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ReunionPresence = {
+  id: string
+  reunion_id: string
+  membre_id: string
+  statut: 'present' | 'excuse' | 'absent'
+}
+
+export type Tache = {
+  id: string
+  titre: string
+  description: string | null
+  statut: 'a_faire' | 'en_cours' | 'fait' | 'annulee'
+  responsable_id: string | null
+  responsable_nom_libre: string | null
+  realisateur_id: string | null
+  realisateur_nom_libre: string | null
+  deadline: string | null
+  date_realisation: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }

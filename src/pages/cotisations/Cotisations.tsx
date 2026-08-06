@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase, Membre, Cotisation } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
 
 export default function Cotisations() {
   const [membres, setMembres] = useState<Membre[]>([])
@@ -21,6 +22,7 @@ export default function Cotisations() {
     if (user) {
       fetchData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, annee])
 
   const fetchData = async () => {
@@ -75,7 +77,7 @@ export default function Cotisations() {
       <div className="chevron-band" />
 
       <main className="max-w-6xl mx-auto p-xl">
-        <div className="flex items-center gap-md mb-xl">
+        <div className="flex items-center gap-md mb-xl flex-wrap print:hidden">
           <label className="uppercase text-xs tracking-[0.1em] font-semibold text-brand-petrol">Année :</label>
           <select
             value={annee}
@@ -90,8 +92,12 @@ export default function Cotisations() {
           <span className="text-sm text-brand-ink/50">
             {cotisations.filter(c => c.paye).length} / {membres.length} cotisations payées
           </span>
+
+          <BoutonImprimer targetId="impression-cotisations" titre={`Cotisations ${annee}`} orientation="landscape" />
         </div>
 
+        <div id="impression-cotisations">
+        <EnteteImpression titre={`Cotisations — Année ${annee}`} />
         <div className="border border-brand-hairline bg-brand-paper overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -104,7 +110,7 @@ export default function Cotisations() {
                   </th>
                 ))}
                 {isAdmin && (
-                  <th className="text-center py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]">Actions</th>
+                  <th className="text-center py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] print:hidden">Actions</th>
                 )}
               </tr>
             </thead>
@@ -142,7 +148,7 @@ export default function Cotisations() {
                       )}
                     </td>
                     {isAdmin && (
-                      <td className="py-sm px-md text-center">
+                      <td className="py-sm px-md text-center print:hidden">
                         {cotisation?.paye ? (
                           <button
                             onClick={() => annulerPaiement(membre.id)}
@@ -165,6 +171,7 @@ export default function Cotisations() {
               })}
             </tbody>
           </table>
+        </div>
         </div>
 
         {!membres.length && (

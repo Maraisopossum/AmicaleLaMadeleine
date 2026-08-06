@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase, Vote, VoteQuestion, VoteOption } from '../../lib/supabase'
+import { supabase, Vote } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
 
 const STATUTS_MEMBRES = ['actif', 'passif', 'honoraire']
 
@@ -179,13 +180,17 @@ export default function Votes() {
       <div className="chevron-band" />
 
       <main className="max-w-4xl mx-auto p-xl">
-        {isAdmin && (
-          <div className="mb-xl">
+        <div className="flex items-center justify-between mb-xl gap-md flex-wrap print:hidden">
+          {isAdmin ? (
             <button className="btn-primary" onClick={() => setShowForm(true)}>
               + Créer un vote
             </button>
-          </div>
-        )}
+          ) : <span />}
+          <BoutonImprimer targetId="impression-votes" titre="Votes" orientation="portrait" />
+        </div>
+
+        <div id="impression-votes">
+        <EnteteImpression titre="Votes et scrutins" />
 
         {/* Votes ouverts */}
         {votesOuverts.length > 0 && (
@@ -201,7 +206,6 @@ export default function Votes() {
                     vote={vote}
                     badge={<span className="tag border-brand-petrol text-brand-petrol">En cours</span>}
                     meta={`${nbVotants} participant${nbVotants > 1 ? 's' : ''}`}
-                    isAdmin={isAdmin}
                     actions={
                       <>
                         {eligible && (
@@ -236,7 +240,6 @@ export default function Votes() {
                   key={vote.id}
                   vote={vote}
                   badge={<span className="tag border-brand-hairline text-brand-ink/50">Brouillon</span>}
-                  isAdmin={isAdmin}
                   actions={
                     <>
                       <Link to={`/votes/${vote.id}`} className="text-sm text-brand-petrol hover:underline font-semibold">
@@ -266,7 +269,6 @@ export default function Votes() {
                   key={vote.id}
                   vote={vote}
                   badge={<span className="tag border-brand-hairline text-brand-ink/40">Archivé</span>}
-                  isAdmin={isAdmin}
                   actions={
                     <>
                       <Link to={`/votes/${vote.id}`} className="text-sm text-brand-petrol hover:underline font-semibold">
@@ -288,6 +290,7 @@ export default function Votes() {
         {votes.length === 0 && (
           <p className="text-center py-xxl text-brand-ink/40">Aucun vote enregistré.</p>
         )}
+        </div>
       </main>
 
       {/* Modal création */}
@@ -439,12 +442,11 @@ export default function Votes() {
   )
 }
 
-function VoteCard({ vote, badge, meta, actions, isAdmin }: {
+function VoteCard({ vote, badge, meta, actions }: {
   vote: Vote
   badge: React.ReactNode
   meta?: string
   actions: React.ReactNode
-  isAdmin: boolean
 }) {
   return (
     <div className="signature-card">

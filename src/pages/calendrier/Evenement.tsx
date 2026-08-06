@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase, Evenement as EvenementType, EvenementSection, ProgrammeItem, Stand } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
 import Organisation from './Organisation'
 
 export default function Evenement() {
@@ -19,6 +20,7 @@ export default function Evenement() {
     if (user && id) {
       fetchData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id])
 
   const fetchData = async () => {
@@ -82,7 +84,7 @@ export default function Evenement() {
       <div className="chevron-band" />
 
       <main className={`mx-auto p-xl space-y-xl ${ongletPrincipal === 'organisation' ? 'max-w-7xl' : 'max-w-3xl'}`}>
-        <div className="flex gap-sm border-b border-brand-hairline">
+        <div className="flex gap-sm border-b border-brand-hairline print:hidden">
           {(['infos', 'organisation'] as const).map((onglet) => (
             <button
               key={onglet}
@@ -98,6 +100,11 @@ export default function Evenement() {
 
         {ongletPrincipal === 'infos' && (
           <>
+            <div className="flex justify-end print:hidden">
+              <BoutonImprimer targetId="impression-evenement" titre={evenement.titre} orientation="portrait" />
+            </div>
+            <div id="impression-evenement">
+            <EnteteImpression titre={evenement.titre} />
             {/* Stands à découvrir */}
             {stands.length > 0 && (
               <section className="signature-card">
@@ -134,6 +141,7 @@ export default function Evenement() {
             {!programme && !infos && !stands.length && !isAdmin && (
               <p className="text-center text-brand-ink/50 py-xxl">Aucune information disponible pour le moment.</p>
             )}
+            </div>
           </>
         )}
 

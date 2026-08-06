@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { supabase, Document } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
 
 const TYPES = ['statut', 'reglement', 'proces_verbal', 'compte_rendu', 'autre']
 
@@ -25,6 +26,7 @@ export default function Documents() {
     if (user) {
       fetchDocuments()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, showArchive])
 
   const fetchDocuments = async () => {
@@ -120,7 +122,13 @@ export default function Documents() {
           </button>
         )}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-lg">
+        <div className="flex justify-end mb-md print:hidden">
+          <BoutonImprimer targetId="impression-documents" titre="Liste des documents" orientation="portrait" />
+        </div>
+
+        <div id="impression-documents">
+        <EnteteImpression titre={showArchive ? 'Documents archivés' : 'Documents officiels'} />
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-lg print:grid-cols-1">
           {documents.map((doc) => (
             <div key={doc.id} className="signature-card">
               <div className="mb-md">
@@ -135,7 +143,7 @@ export default function Documents() {
                 <p className="text-sm text-brand-ink/70 mb-md">{doc.description}</p>
               )}
 
-              <div className="flex gap-sm mt-auto">
+              <div className="flex gap-sm mt-auto print:hidden">
                 <a
                   href={doc.fichier_url}
                   target="_blank"
@@ -154,7 +162,7 @@ export default function Documents() {
               </div>
 
               {isAdmin && (
-                <div className="flex gap-md mt-sm">
+                <div className="flex gap-md mt-sm print:hidden">
                   <button
                     onClick={() => toggleArchive(doc)}
                     className="text-xs text-brand-petrol hover:underline font-semibold"
@@ -172,6 +180,7 @@ export default function Documents() {
             </div>
           ))}
         </div>
+        </div>
 
         {!documents.length && (
           <div className="text-center py-xxl text-brand-ink/50">
@@ -179,7 +188,7 @@ export default function Documents() {
           </div>
         )}
 
-        <div className="mt-xxl">
+        <div className="mt-xxl print:hidden">
           {showArchive ? (
             <a href="/documents" className="text-brand-petrol hover:underline text-sm uppercase tracking-[0.1em] font-semibold">
               ← Retour aux documents actifs

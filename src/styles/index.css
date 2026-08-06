@@ -98,6 +98,17 @@ body {
   @apply uppercase text-xs tracking-[0.1em] font-semibold border px-sm py-xxs inline-block;
 }
 
+/* Impression sobre noir/blanc : toutes les pages imprimables (via BoutonImprimer)
+   perdent leurs couleurs de marque au profit d'un rendu texte simple, économe en encre. */
+@media print {
+  body, body * {
+    color: #000 !important;
+    background: #fff !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+  }
+}
+
 /* Bande de chevrons, comme les bandes réfléchissantes des tenues d'intervention */
 .chevron-band {
   height: 10px;

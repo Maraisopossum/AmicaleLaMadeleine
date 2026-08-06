@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase, Membre } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
+import Avatar from '../../components/Layout/Avatar'
 
 const ROLES = [
   'president', 'secretaire', 'tresorier',
@@ -51,6 +53,11 @@ export default function Membres() {
   const [bulkGenerating, setBulkGenerating] = useState(false)
   const [bulkError, setBulkError] = useState<string | null>(null)
 
+  const [photoTargetId, setPhotoTargetId] = useState<string | null>(null)
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     if (user) {
       fetchMembres()
@@ -65,6 +72,37 @@ export default function Membres() {
 
     setMembres(data || [])
     setLoading(false)
+  }
+
+  const openPhotoPicker = (membreId: string) => {
+    setPhotoTargetId(membreId)
+    photoInputRef.current?.click()
+  }
+
+  const handlePhotoFile = async (file: File) => {
+    if (!photoTargetId) return
+    setPhotoError(null)
+    setUploadingPhotoId(photoTargetId)
+
+    const extension = file.name.split('.').pop() || 'jpg'
+    const chemin = `${photoTargetId}-${Date.now()}.${extension}`
+    const { error: uploadErr } = await supabase.storage.from('photos-membres').upload(chemin, file)
+
+    if (uploadErr) {
+      setPhotoError(uploadErr.message)
+      setUploadingPhotoId(null)
+      return
+    }
+
+    const { data: urlData } = supabase.storage.from('photos-membres').getPublicUrl(chemin)
+    const { error: updateErr } = await supabase
+      .from('membres')
+      .update({ photo_url: urlData.publicUrl })
+      .eq('id', photoTargetId)
+
+    setUploadingPhotoId(null)
+    if (updateErr) { setPhotoError(updateErr.message); return }
+    fetchMembres()
   }
 
   const handleAddMembre = async (e: React.FormEvent) => {
@@ -306,6 +344,24 @@ export default function Membres() {
           </div>
         )}
 
+        {canManageMembres && (
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/jpeg,image/png"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handlePhotoFile(file)
+              e.target.value = ''
+            }}
+          />
+        )}
+
+        {photoError && (
+          <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm print:hidden">{photoError}</div>
+        )}
+
         {csvImporting && <p className="eyebrow mb-md">Import en cours…</p>}
 
         {csvErrors.length > 0 && (
@@ -325,12 +381,18 @@ export default function Membres() {
           </div>
         )}
 
+        <div className="flex justify-end mb-md print:hidden">
+          <BoutonImprimer targetId="impression-membres" titre="Liste des membres" orientation="landscape" />
+        </div>
+
+        <div id="impression-membres">
+        <EnteteImpression titre="Liste des membres" />
         <div className="border border-brand-hairline bg-brand-paper overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-brand-ink text-brand-parchment">
                 {canManageMembres && (
-                  <th className="text-left py-sm px-md w-8">
+                  <th className="text-left py-sm px-md w-8 print:hidden">
                     <input
                       type="checkbox"
                       aria-label="Tout sélectionner"
@@ -350,10 +412,10 @@ export default function Membres() {
                   )
                 })}
                 {canManageMembres && (
-                  <th className="text-left py-sm px-md font-semibold text-xs tracking-[0.15em]">Accès</th>
+                  <th className="text-left py-sm px-md font-semibold text-xs tracking-[0.15em] print:hidden">Accès</th>
                 )}
                 {canManageMembres && (
-                  <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em]"></th>
+                  <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] print:hidden"></th>
                 )}
               </tr>
             </thead>
@@ -369,7 +431,7 @@ export default function Membres() {
                   className={`border-t border-brand-hairline ${i % 2 === 1 ? 'bg-brand-parchment/50' : ''} hover:bg-brand-sky/10`}
                 >
                   {canManageMembres && (
-                    <td className="py-sm px-md">
+                    <td className="py-sm px-md print:hidden">
                       <input
                         type="checkbox"
                         aria-label={`Sélectionner ${membre.prenom} ${membre.nom}`}
@@ -378,7 +440,24 @@ export default function Membres() {
                       />
                     </td>
                   )}
-                  <td className="py-sm px-md font-medium">{membre.nom}</td>
+                  <td className="py-sm px-md font-medium">
+                    <div className="flex items-center gap-sm">
+                      {canManageMembres ? (
+                        <button
+                          type="button"
+                          onClick={() => openPhotoPicker(membre.id)}
+                          disabled={uploadingPhotoId === membre.id}
+                          className="print:hidden disabled:opacity-50"
+                          title="Changer la photo"
+                        >
+                          <Avatar prenom={membre.prenom} nom={membre.nom} photoUrl={membre.photo_url} size="sm" />
+                        </button>
+                      ) : (
+                        <Avatar prenom={membre.prenom} nom={membre.nom} photoUrl={membre.photo_url} size="sm" />
+                      )}
+                      {membre.nom}
+                    </div>
+                  </td>
                   <td className="py-sm px-md">{membre.prenom}</td>
                   <td className="py-sm px-md">
                     {canManageMembres ? (
@@ -416,7 +495,7 @@ export default function Membres() {
                     </span>
                   </td>
                   {canManageMembres && (
-                    <td className="py-sm px-md">
+                    <td className="py-sm px-md print:hidden">
                       <div className="flex flex-col items-start gap-xxs">
                         {membre.a_un_compte && (
                           <span className="text-xs text-success font-semibold">✓ Accès actif</span>
@@ -434,7 +513,7 @@ export default function Membres() {
                     </td>
                   )}
                   {canManageMembres && (
-                    <td className="py-sm px-md">
+                    <td className="py-sm px-md print:hidden">
                       <button
                         onClick={() => handleDeleteMembre(membre)}
                         className="text-xs text-brand-brick hover:underline font-semibold"
@@ -447,6 +526,7 @@ export default function Membres() {
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       </main>
 

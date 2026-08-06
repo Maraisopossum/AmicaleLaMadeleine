@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase, Vote, VoteQuestion, VoteOption, VoteReponse } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import BoutonImprimer, { EnteteImpression } from '../../components/Layout/BoutonImprimer'
 
 type QuestionAvecOptions = VoteQuestion & { options: VoteOption[] }
 type ReponseLocale = { valeur_oui_non?: boolean; option_ids?: string[] }
@@ -14,7 +15,6 @@ export default function VotePage() {
 
   const [vote, setVote] = useState<Vote | null>(null)
   const [questions, setQuestions] = useState<QuestionAvecOptions[]>([])
-  const [mesReponses, setMesReponses] = useState<VoteReponse[]>([])
   const [toutesReponses, setToutesReponses] = useState<VoteReponse[]>([])
   const [loading, setLoading] = useState(true)
   const [reponses, setReponses] = useState<Record<string, ReponseLocale>>({})
@@ -24,6 +24,9 @@ export default function VotePage() {
 
   useEffect(() => {
     if (user && id) fetchVote()
+    // fetchVote est redéfinie à chaque rendu ; la dépendre boucle sur [user, id],
+    // pattern déjà utilisé dans tout le reste de l'app (Documents, Cotisations, Organisation…)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id])
 
   const fetchVote = async () => {
@@ -46,7 +49,6 @@ export default function VotePage() {
     if (membre) {
       const { data: mesRep } = await supabase
         .from('vote_reponses').select('*').eq('vote_id', id).eq('membre_id', membre.id)
-      setMesReponses(mesRep || [])
       if ((mesRep || []).length > 0) setSubmitted(true)
     }
 
@@ -119,7 +121,6 @@ export default function VotePage() {
   if (!user || !vote) return null
 
   const eligible = membre ? vote.statuts_eligibles.includes(membre.statut) : false
-  const peutVoter = vote.statut === 'ouvert' && eligible && !submitted
   const afficherResultats = vote.statut === 'archive'
   const afficherTendance = vote.statut === 'ouvert' && isAdmin
 
@@ -170,12 +171,16 @@ export default function VotePage() {
 
         {/* Résultats (après clôture) ou tendance en cours (bureau uniquement) */}
         {(afficherResultats || afficherTendance) && (
-          <div className="mb-xl">
-            <div className="mb-lg flex items-center gap-md">
-              <h2 className="font-display font-bold uppercase text-2xl">
-                {afficherResultats ? 'Résultats' : 'Tendance en cours'}
-              </h2>
-              <span className="text-sm text-brand-ink/50">{votantsDistincts} participant{votantsDistincts > 1 ? 's' : ''}</span>
+          <div className="mb-xl" id="impression-vote">
+            <EnteteImpression titre={`Résultats — ${vote.titre}`} />
+            <div className="mb-lg flex items-center gap-md justify-between flex-wrap print:hidden">
+              <div className="flex items-center gap-md">
+                <h2 className="font-display font-bold uppercase text-2xl">
+                  {afficherResultats ? 'Résultats' : 'Tendance en cours'}
+                </h2>
+                <span className="text-sm text-brand-ink/50">{votantsDistincts} participant{votantsDistincts > 1 ? 's' : ''}</span>
+              </div>
+              <BoutonImprimer targetId="impression-vote" titre={vote.titre} orientation="portrait" />
             </div>
             {afficherTendance && (
               <p className="text-sm text-brand-ink/50 mb-lg">
@@ -193,7 +198,7 @@ export default function VotePage() {
                         <BarreResultat label="Oui" count={res.oui} total={res.total} />
                         <BarreResultat label="Non" count={res.non} total={res.total} />
                         {!vote.anonyme && res.reponsesQ.length > 0 && isAdmin && (
-                          <DetailNonAnonyme reponses={res.reponsesQ} toutesReponses={toutesReponses} type="oui_non" />
+                          <DetailNonAnonyme reponses={res.reponsesQ} type="oui_non" />
                         )}
                       </div>
                     ) : (
@@ -207,7 +212,7 @@ export default function VotePage() {
                           />
                         ))}
                         {!vote.anonyme && res.reponsesQ.length > 0 && isAdmin && (
-                          <DetailNonAnonyme reponses={res.reponsesQ} toutesReponses={toutesReponses} type="options" options={q.options} />
+                          <DetailNonAnonyme reponses={res.reponsesQ} type="options" options={q.options} />
                         )}
                       </div>
                     )}
@@ -339,9 +344,8 @@ function BarreResultat({ label, count, total }: { label: string; count: number; 
   )
 }
 
-function DetailNonAnonyme({ reponses, toutesReponses, type, options }: {
-  reponses: any[]
-  toutesReponses: any[]
+function DetailNonAnonyme({ reponses, type, options }: {
+  reponses: VoteReponse[]
   type: 'oui_non' | 'options'
   options?: VoteOption[]
 }) {

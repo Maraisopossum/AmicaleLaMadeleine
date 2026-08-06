@@ -9,6 +9,7 @@ export default function Dashboard() {
   const { user, isAdmin, loading } = useAuth()
   const [prochainsEvenements, setProchainsEvenements] = useState<Evenement[]>([])
   const [votesEnCours, setVotesEnCours] = useState(0)
+  const [tachesEnCours, setTachesEnCours] = useState(0)
 
   useEffect(() => {
     if (!user) return
@@ -24,7 +25,14 @@ export default function Dashboard() {
       .select('id', { count: 'exact', head: true })
       .eq('statut', 'ouvert')
       .then(({ count }) => setVotesEnCours(count || 0))
-  }, [user])
+    if (isAdmin) {
+      supabase
+        .from('taches')
+        .select('id', { count: 'exact', head: true })
+        .in('statut', ['a_faire', 'en_cours'])
+        .then(({ count }) => setTachesEnCours(count || 0))
+    }
+  }, [user, isAdmin])
 
   if (loading) {
     return (
@@ -124,6 +132,33 @@ export default function Dashboard() {
             </div>
             <p className="text-sm text-brand-ink/70">Scrutins et votes associatifs</p>
           </Link>
+
+          <Link to="/idees" className="signature-card signature-coral block">
+            <span className="absolute top-0 left-0 h-1 w-12 bg-brand-sky" />
+            <h3 className="font-display font-bold uppercase text-xl mt-sm mb-xs">Boîte à idées</h3>
+            <p className="text-sm opacity-90">Proposez et suivez vos idées</p>
+          </Link>
+
+          <Link to="/reunions" className="signature-card block">
+            <span className="absolute top-0 left-0 h-1 w-12 bg-brand-brick" />
+            <h3 className="font-display font-bold uppercase text-xl mt-sm mb-xs">Réunions</h3>
+            <p className="text-sm text-brand-ink/70">Comptes-rendus de réunions et AG</p>
+          </Link>
+
+          {isAdmin && (
+            <Link to="/taches" className="signature-card block">
+              <span className="absolute top-0 left-0 h-1 w-12 bg-brand-petrol" />
+              <div className="flex items-start justify-between mt-sm mb-xs">
+                <h3 className="font-display font-bold uppercase text-xl">Tâches</h3>
+                {tachesEnCours > 0 && (
+                  <span className="bg-brand-brick text-brand-parchment text-xs font-bold px-sm py-xxs leading-none">
+                    {tachesEnCours} en cours
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-brand-ink/70">Suivi des tâches du bureau</p>
+            </Link>
+          )}
         </div>
       </main>
     </div>
