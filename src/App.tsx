@@ -17,6 +17,8 @@ import Idees from './pages/idees/Idees'
 import Taches from './pages/taches/Taches'
 import Reunions from './pages/reunions/Reunions'
 import ReunionDetail from './pages/reunions/ReunionDetail'
+import Recrutement from './pages/public/Recrutement'
+import Candidatures from './pages/candidatures/Candidatures'
 
 function App() {
   return (
@@ -24,6 +26,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Welcome />} />
         <Route path="/organigramme" element={<Organigramme />} />
+        <Route path="/recrutement" element={<Recrutement />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/membres" element={<RequireAuth><Membres /></RequireAuth>} />
@@ -38,6 +41,7 @@ function App() {
         <Route path="/taches" element={<RequireAuth><Taches /></RequireAuth>} />
         <Route path="/reunions" element={<RequireAuth><Reunions /></RequireAuth>} />
         <Route path="/reunions/:id" element={<RequireAuth><ReunionDetail /></RequireAuth>} />
+        <Route path="/candidatures" element={<RequireAuth><Candidatures /></RequireAuth>} />
       </Routes>
     </AuthProvider>
   )

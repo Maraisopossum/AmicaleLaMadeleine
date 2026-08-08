@@ -6,10 +6,11 @@ import ModuleHeader from '../../components/Layout/ModuleHeader'
 
 
 export default function Dashboard() {
-  const { user, isAdmin, loading } = useAuth()
+  const { user, isAdmin, accesCandidatures, loading } = useAuth()
   const [prochainsEvenements, setProchainsEvenements] = useState<Evenement[]>([])
   const [votesEnCours, setVotesEnCours] = useState(0)
   const [tachesEnCours, setTachesEnCours] = useState(0)
+  const [candidaturesATraiter, setCandidaturesATraiter] = useState(0)
 
   useEffect(() => {
     if (!user) return
@@ -32,7 +33,14 @@ export default function Dashboard() {
         .in('statut', ['a_faire', 'en_cours'])
         .then(({ count }) => setTachesEnCours(count || 0))
     }
-  }, [user, isAdmin])
+    if (accesCandidatures) {
+      supabase
+        .from('candidatures')
+        .select('id', { count: 'exact', head: true })
+        .eq('traite', false)
+        .then(({ count }) => setCandidaturesATraiter(count || 0))
+    }
+  }, [user, isAdmin, accesCandidatures])
 
   if (loading) {
     return (
@@ -157,6 +165,21 @@ export default function Dashboard() {
                 )}
               </div>
               <p className="text-sm text-brand-ink/70">Suivi des tâches du bureau</p>
+            </Link>
+          )}
+
+          {accesCandidatures && (
+            <Link to="/candidatures" className="signature-card signature-coral block">
+              <span className="absolute top-0 left-0 h-1 w-12 bg-brand-sky" />
+              <div className="flex items-start justify-between mt-sm mb-xs">
+                <h3 className="font-display font-bold uppercase text-xl">Candidatures</h3>
+                {candidaturesATraiter > 0 && (
+                  <span className="bg-brand-ink text-brand-parchment text-xs font-bold px-sm py-xxs leading-none">
+                    {candidaturesATraiter} à traiter
+                  </span>
+                )}
+              </div>
+              <p className="text-sm opacity-90">Contacts du quiz de recrutement</p>
             </Link>
           )}
         </div>

@@ -8,6 +8,7 @@ type AuthContextType = {
   loading: boolean
   isAdmin: boolean
   canManageMembres: boolean
+  accesCandidatures: boolean
   refreshMembre: () => Promise<void>
 }
 
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAdmin: false,
   canManageMembres: false,
+  accesCandidatures: false,
   refreshMembre: async () => {},
 })
 
@@ -48,6 +50,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   membre?.role === 'adjoint_tresorier'
 
   const canManageMembres = membre?.role === 'president' || user?.email === ADMIN_EMAIL
+
+  // Périmètre distinct de canManageMembres : accès aux candidatures de
+  // recrutement, réservé à l'admin fixe + aux membres explicitement désignés
+  // (cf. 20260808000000_candidatures.sql, is_candidature_manager()).
+  const accesCandidatures = user?.email === ADMIN_EMAIL || membre?.acces_candidatures === true
 
   const refreshMembre = async () => {
     if (!user?.email) return
@@ -104,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, membre, loading, isAdmin, canManageMembres, refreshMembre }}>
+    <AuthContext.Provider value={{ user, membre, loading, isAdmin, canManageMembres, accesCandidatures, refreshMembre }}>
       {children}
     </AuthContext.Provider>
   )
