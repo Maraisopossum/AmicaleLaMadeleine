@@ -46,8 +46,9 @@ export default function Membres() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [creatingAccessId, setCreatingAccessId] = useState<string | null>(null)
-  const [accessModal, setAccessModal] = useState<{ email: string; password: string } | null>(null)
+  const [accessModal, setAccessModal] = useState<{ email: string; password: string; emailEnvoye?: boolean; emailErreur?: string } | null>(null)
   const [accessError, setAccessError] = useState<string | null>(null)
+  const [envoyerParEmail, setEnvoyerParEmail] = useState(true)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkGenerating, setBulkGenerating] = useState(false)
@@ -183,9 +184,9 @@ export default function Membres() {
 
   // Appelle l'edge function pour un membre, retourne le mot de passe temporaire
   // généré ou lève une erreur avec le message à afficher.
-  const createAccess = async (membre: Membre): Promise<{ email: string; password: string }> => {
+  const createAccess = async (membre: Membre, envoyerParEmail: boolean): Promise<{ email: string; password: string; emailEnvoye?: boolean; emailErreur?: string }> => {
     const { data, error } = await supabase.functions.invoke('create-membre-access', {
-      body: { membreId: membre.id },
+      body: { membreId: membre.id, envoyerParEmail },
     })
 
     if (error) {
@@ -207,7 +208,7 @@ export default function Membres() {
     if (data?.error) {
       throw new Error(data.error)
     }
-    return { email: data.email, password: data.password }
+    return { email: data.email, password: data.password, emailEnvoye: data.emailEnvoye, emailErreur: data.emailErreur }
   }
 
   const handleCreateAccess = async (membre: Membre) => {
@@ -215,7 +216,7 @@ export default function Membres() {
     setAccessError(null)
 
     try {
-      const result = await createAccess(membre)
+      const result = await createAccess(membre, envoyerParEmail)
       setAccessModal(result)
       fetchMembres()
     } catch (err) {
@@ -234,7 +235,7 @@ export default function Membres() {
     const settled = await Promise.all(
       cibles.map(async (membre) => {
         try {
-          const { password } = await createAccess(membre)
+          const { password } = await createAccess(membre, envoyerParEmail)
           return { prenom: membre.prenom, nom: membre.nom, email: membre.email, password, error: null as string | null }
         } catch (err) {
           return { prenom: membre.prenom, nom: membre.nom, email: membre.email, password: '', error: err instanceof Error ? err.message : 'Erreur inattendue.' }
@@ -322,13 +323,24 @@ export default function Membres() {
               Télécharger le modèle CSV
             </button>
             {canManageMembres && (
-              <button
-                className="btn-secondary"
-                disabled={!selectedIds.size || bulkGenerating}
-                onClick={handleBulkCreateAccess}
-              >
-                {bulkGenerating ? 'Génération en cours…' : `Générer les accès (${selectedIds.size})`}
-              </button>
+              <>
+                <button
+                  className="btn-secondary"
+                  disabled={!selectedIds.size || bulkGenerating}
+                  onClick={handleBulkCreateAccess}
+                >
+                  {bulkGenerating ? 'Génération en cours…' : `Générer les accès (${selectedIds.size})`}
+                </button>
+                <label className="flex items-center gap-xs text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={envoyerParEmail}
+                    onChange={(e) => setEnvoyerParEmail(e.target.checked)}
+                    className="w-4 h-4 accent-brand-petrol"
+                  />
+                  Envoyer par email
+                </label>
+              </>
             )}
             <input
               ref={fileInputRef}
@@ -600,8 +612,18 @@ export default function Membres() {
         <Modal onClose={() => setAccessModal(null)}>
           <h2 className="font-display font-bold uppercase text-xl mb-sm">Mot de passe temporaire</h2>
           <p className="text-sm text-brand-ink/70 mb-lg">
-            Ce mot de passe ne sera plus affiché après fermeture de cette fenêtre. Communique-le au membre (oral, papier) — il devra le changer à sa première connexion.
+            Ce mot de passe ne sera plus affiché après fermeture de cette fenêtre. Il devra être changé par le membre à sa première connexion.
           </p>
+          {accessModal.emailEnvoye && (
+            <div className="border border-brand-petrol text-brand-petrol p-md mb-md text-sm">
+              ✓ Email envoyé à {accessModal.email}.
+            </div>
+          )}
+          {accessModal.emailErreur && (
+            <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm">
+              L'email n'a pas pu être envoyé ({accessModal.emailErreur}) — communique le mot de passe autrement.
+            </div>
+          )}
           <div className="border border-brand-hairline bg-brand-parchment p-md mb-md">
             <p className="text-xs uppercase tracking-[0.1em] text-brand-petrol font-semibold mb-xxs">Email</p>
             <p className="font-medium">{accessModal.email}</p>

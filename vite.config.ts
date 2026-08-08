@@ -8,12 +8,20 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Service worker maison (src/sw.ts) plutôt que généré, pour pouvoir
+      // écouter les événements push/notificationclick — nécessaire aux
+      // notifications push. precacheAndRoute() y assure le même rôle que le
+      // mode generateSW : cache du bundle app (JS/CSS/HTML/icônes) pour un
+      // chargement instantané, sans runtimeCaching sur les appels Supabase
+      // (l'app dépend d'auth/données toujours à jour, un cache d'API
+      // introduirait des données périmées sans bénéfice réel).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
+      },
       includeAssets: ['favicon-32x32.png', 'apple-touch-icon.png'],
-      // Précache uniquement le bundle app (JS/CSS/HTML/icônes) pour un chargement
-      // instantané et l'installation sur l'écran d'accueil. Pas de runtimeCaching
-      // sur les appels Supabase : l'app dépend d'auth/données toujours à jour,
-      // un cache d'API introduirait des données périmées sans bénéfice réel
-      // (pas de vrai mode hors-ligne possible pour ce type d'app).
       manifest: {
         name: 'Amicale des Sapeurs-Pompiers de La Madeleine',
         short_name: 'Amicale La Madeleine',

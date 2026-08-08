@@ -1,12 +1,13 @@
 // Edge Function : crée OU réinitialise le compte de connexion (Supabase Auth)
 // d'un membre existant de la table `membres`, en lui attribuant un mot de
-// passe temporaire — sans envoyer d'email (le SMTP intégré de Supabase est
-// limité à quelques envois par heure, insuffisant pour un onboarding en masse
-// et aucun nom de domaine n'est disponible pour un SMTP personnalisé).
+// passe temporaire.
 //
-// Le mot de passe temporaire est retourné en clair à l'appelant (le bureau),
-// qui le communique au membre hors email (oral, papier). Le membre est
-// contraint de le changer à sa première connexion via le flag
+// Le mot de passe temporaire est toujours retourné en clair à l'appelant (le
+// bureau) pour affichage/confirmation à l'écran. Si `envoyerEmail: true` est
+// passé dans le corps de la requête, il est en plus envoyé par email au
+// membre via Resend (domaine propre, cf. supabase/functions/_shared/resend.ts)
+// — sinon le bureau le communique hors email comme avant (oral, papier).
+// Le membre est contraint de le changer à sa première connexion via le flag
 // `doit_changer_mdp` (voir 20240121000000_membres_doit_changer_mdp.sql).
 //
 // - Nouveau compte  : auth.admin.createUser() avec email_confirm: true (aucune
@@ -28,6 +29,7 @@
 // fournies automatiquement par l'environnement d'exécution des Edge Functions.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { envoyerEmail } from '../_shared/resend.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -49,6 +51,18 @@ function jsonResponse(body: unknown, status: number) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
+}
+
+function envoyerAccesParEmail(email: string, password: string) {
+  return envoyerEmail(
+    email,
+    'Ton accès à l\'espace membre de l\'Amicale',
+    `<p>Bonjour,</p>
+     <p>Un accès à l'espace membre de l'Amicale des Sapeurs-Pompiers de La Madeleine vient de t'être attribué.</p>
+     <p><strong>Identifiant :</strong> ${email}<br/>
+        <strong>Mot de passe temporaire :</strong> <span style="font-family:monospace;font-size:16px;background:#F3ECDC;padding:2px 6px;">${password}</span></p>
+     <p>Il te sera demandé de le changer dès ta première connexion.</p>`
+  )
 }
 
 Deno.serve(async (req) => {
@@ -84,7 +98,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Réservé au président et à l\'administrateur.' }, 403)
     }
 
-    const { membreId } = await req.json()
+    const { membreId, envoyerParEmail } = await req.json()
     if (!membreId) {
       return jsonResponse({ error: 'membreId manquant.' }, 400)
     }
@@ -120,7 +134,8 @@ Deno.serve(async (req) => {
       if (updateError) {
         return jsonResponse({ error: updateError.message }, 500)
       }
-      return jsonResponse({ email: cible.email, password: tempPassword }, 200)
+      const emailResultat = envoyerParEmail ? await envoyerAccesParEmail(cible.email, tempPassword) : undefined
+      return jsonResponse({ email: cible.email, password: tempPassword, emailEnvoye: emailResultat?.ok, emailErreur: emailResultat?.erreur }, 200)
     }
 
     // Création : compte + mot de passe temporaire, aucun email envoyé.
@@ -147,7 +162,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: updateError.message }, 500)
     }
 
-    return jsonResponse({ email: cible.email, password: tempPassword }, 200)
+    const emailResultat = envoyerParEmail ? await envoyerAccesParEmail(cible.email, tempPassword) : undefined
+    return jsonResponse({ email: cible.email, password: tempPassword, emailEnvoye: emailResultat?.ok, emailErreur: emailResultat?.erreur }, 200)
   } catch (err) {
     return jsonResponse({ error: err instanceof Error ? err.message : 'Erreur inattendue.' }, 500)
   }

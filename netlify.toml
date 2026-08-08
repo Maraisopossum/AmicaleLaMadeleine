@@ -2,6 +2,16 @@
   command = "npm run build"
   publish = "dist"
 
+# Valeurs non sensibles (URLs publiques, clé VAPID explicitement publique) —
+# versionnées ici plutôt que saisies à la main sur Netlify. Les vrais
+# secrets (VITE_SUPABASE_ANON_KEY, VITE_ADMIN_PASSWORD...) restent en
+# variables d'environnement Netlify, jamais dans ce fichier.
+[build.environment]
+  VITE_FACEBOOK_URL = "https://www.facebook.com/splamadeleine59"
+  VITE_INSTAGRAM_URL = "https://www.instagram.com/sp_la_madeleine"
+  VITE_SDIS_RECRUTEMENT_URL = "https://www.sdis59.fr/sengager/sapeurs-pompiers-volontaires/"
+  VITE_VAPID_PUBLIC_KEY = "BGj6EZXBL2xwyboVkExBsWud2rP59wzHLFW7LoX93VKz-RtZeQtanbbiV0EFJaYyyD_2Mr_E7wwgiCGg3brc3uY"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

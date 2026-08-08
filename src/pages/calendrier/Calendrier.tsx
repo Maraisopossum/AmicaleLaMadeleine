@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { supabase, Evenement } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -45,6 +45,47 @@ export default function Calendrier() {
   const [form, setForm] = useState<NouvelEvenement>(EVENEMENT_VIDE)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [ouvertureCrId, setOuvertureCrId] = useState<string | null>(null)
+  const navigate = useNavigate()
+
+  const [convocationEvent, setConvocationEvent] = useState<Evenement | null>(null)
+  const [statutsConvocation, setStatutsConvocation] = useState<string[]>(['actif'])
+  const [envoiConvocation, setEnvoiConvocation] = useState(false)
+  const [resultatConvocation, setResultatConvocation] = useState<{ sent: number; total: number } | null>(null)
+  const [erreurConvocation, setErreurConvocation] = useState('')
+
+  const envoyerConvocation = async () => {
+    if (!convocationEvent || !statutsConvocation.length) return
+    setEnvoiConvocation(true)
+    setErreurConvocation('')
+    const { data, error } = await supabase.functions.invoke('send-convocation', {
+      body: { evenementId: convocationEvent.id, statuts: statutsConvocation },
+    })
+    setEnvoiConvocation(false)
+    if (error || data?.error) { setErreurConvocation(data?.error || error?.message || 'Erreur inattendue.'); return }
+    setResultatConvocation(data)
+  }
+
+  const ouvrirCr = async (event: Evenement) => {
+    setOuvertureCrId(event.id)
+    const { data: existante } = await supabase
+      .from('reunions').select('id').eq('evenement_id', event.id).maybeSingle()
+
+    if (existante) {
+      navigate(`/reunions/${existante.id}`)
+      return
+    }
+
+    const { data: nouvelle, error } = await supabase
+      .from('reunions')
+      .insert({ titre: event.titre, date_reunion: event.date_debut.slice(0, 10), evenement_id: event.id })
+      .select()
+      .single()
+
+    setOuvertureCrId(null)
+    if (error || !nouvelle) { window.alert(`Erreur : ${error?.message || 'création impossible'}`); return }
+    navigate(`/reunions/${nouvelle.id}`)
+  }
 
   const openCreateForm = () => {
     setEditingId(null)
@@ -253,7 +294,7 @@ END:VCALENDAR`
                         <span
                           key={event.id}
                           title={event.titre}
-                          className={`text-[10px] leading-tight truncate px-xxs border-l-2 ${getTypeClass(event.type)}`}
+                          className={`text-[10px] leading-tight whitespace-normal break-words px-xxs border-l-2 ${getTypeClass(event.type)}`}
                         >
                           {event.titre}
                         </span>
@@ -325,6 +366,25 @@ END:VCALENDAR`
                 >
                   {isAdmin ? 'Gérer la page de l\'événement →' : 'Voir la page de l\'événement →'}
                 </Link>
+              )}
+
+              {isAdmin && (event.type === 'ag' || event.type === 'reunion') && (
+                <button
+                  onClick={() => ouvrirCr(event)}
+                  disabled={ouvertureCrId === event.id}
+                  className="block w-full text-center text-xs text-brand-petrol hover:underline font-semibold mt-sm disabled:opacity-50"
+                >
+                  {ouvertureCrId === event.id ? 'Ouverture…' : 'Ouvrir le module Réunion →'}
+                </button>
+              )}
+
+              {isAdmin && event.type === 'ag' && (
+                <button
+                  onClick={() => { setConvocationEvent(event); setStatutsConvocation(['actif']); setResultatConvocation(null); setErreurConvocation('') }}
+                  className="block w-full text-center text-xs text-brand-brick hover:underline font-semibold mt-sm"
+                >
+                  Envoyer la convocation →
+                </button>
               )}
 
               {isAdmin && (
@@ -402,6 +462,7 @@ END:VCALENDAR`
                   <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
                   <input
                     type="datetime-local"
+                    step={900}
                     required
                     value={form.date_debut}
                     onChange={(e) => setForm({ ...form, date_debut: e.target.value })}
@@ -412,6 +473,7 @@ END:VCALENDAR`
                   <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fin (optionnel)</label>
                   <input
                     type="datetime-local"
+                    step={900}
                     value={form.date_fin}
                     onChange={(e) => setForm({ ...form, date_fin: e.target.value })}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -456,6 +518,59 @@ END:VCALENDAR`
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {convocationEvent && (
+        <div className="fixed inset-0 bg-brand-ink/70 flex items-center justify-center p-xl z-50" onClick={() => setConvocationEvent(null)}>
+          <div className="signature-card max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-display font-bold uppercase text-xl mb-sm">Envoyer la convocation</h2>
+            <p className="text-sm text-brand-ink/70 mb-lg">{convocationEvent.titre}</p>
+
+            {erreurConvocation && (
+              <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm">{erreurConvocation}</div>
+            )}
+
+            {resultatConvocation ? (
+              <div className="border border-brand-petrol text-brand-petrol p-md mb-lg text-sm">
+                ✓ Convocation envoyée à {resultatConvocation.sent} / {resultatConvocation.total} membre{resultatConvocation.total > 1 ? 's' : ''}.
+              </div>
+            ) : (
+              <>
+                <p className="text-xs uppercase tracking-[0.1em] font-semibold text-brand-petrol mb-sm">Destinataires</p>
+                <div className="flex gap-md mb-lg">
+                  {(['actif', 'passif', 'honoraire'] as const).map((statut) => (
+                    <label key={statut} className="flex items-center gap-xs text-sm cursor-pointer capitalize">
+                      <input
+                        type="checkbox"
+                        checked={statutsConvocation.includes(statut)}
+                        onChange={(e) => setStatutsConvocation((prev) =>
+                          e.target.checked ? [...prev, statut] : prev.filter((s) => s !== statut)
+                        )}
+                        className="w-4 h-4 accent-brand-petrol"
+                      />
+                      {statut}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-sm">
+              {!resultatConvocation && (
+                <button
+                  className="btn-primary flex-1"
+                  disabled={envoiConvocation || !statutsConvocation.length}
+                  onClick={envoyerConvocation}
+                >
+                  {envoiConvocation ? 'Envoi…' : 'Envoyer'}
+                </button>
+              )}
+              <button className="btn-secondary flex-1" onClick={() => setConvocationEvent(null)}>
+                {resultatConvocation ? 'Fermer' : 'Annuler'}
+              </button>
+            </div>
           </div>
         </div>
       )}

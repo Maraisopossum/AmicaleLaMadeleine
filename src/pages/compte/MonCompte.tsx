@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
+import { pushSupporte, statutAbonnementPush, activerPush, desactiverPush } from '../../lib/push'
 
 export default function MonCompte() {
   const { user, membre, loading: authLoading, refreshMembre } = useAuth()
@@ -200,7 +201,91 @@ export default function MonCompte() {
             </button>
           </form>
         </div>
+
+        {membre && <SectionNotifications />}
       </main>
+    </div>
+  )
+}
+
+const TYPES_NOTIF = [
+  ['notif_reunions', 'Compte-rendu de réunion publié'],
+  ['notif_idees', 'Nouvelle idée soumise (bureau)'],
+  ['notif_votes', 'Nouveau vote ouvert'],
+  ['notif_documents', 'Nouveau document ajouté'],
+] as const
+
+function SectionNotifications() {
+  const { membre, refreshMembre } = useAuth()
+  const [abonne, setAbonne] = useState(false)
+  const [chargement, setChargement] = useState(true)
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  useEffect(() => {
+    statutAbonnementPush().then((s) => { setAbonne(s); setChargement(false) })
+  }, [])
+
+  const toggleAbonnement = async () => {
+    if (!membre) return
+    setErreur('')
+    setEnCours(true)
+    if (abonne) {
+      await desactiverPush()
+      setAbonne(false)
+    } else {
+      const res = await activerPush(membre.id)
+      if (!res.ok) setErreur(res.erreur || 'Erreur inconnue.')
+      else setAbonne(true)
+    }
+    setEnCours(false)
+  }
+
+  const togglePreference = async (champ: typeof TYPES_NOTIF[number][0]) => {
+    if (!membre) return
+    await supabase.from('membres').update({ [champ]: !membre[champ] }).eq('id', membre.id)
+    await refreshMembre()
+  }
+
+  if (!membre) return null
+
+  return (
+    <div className="signature-card">
+      <h2 className="font-display font-bold uppercase text-xl mb-lg">Notifications</h2>
+
+      {!pushSupporte() && (
+        <p className="text-sm text-brand-ink/50 mb-md">
+          Les notifications ne sont pas disponibles sur ce navigateur/appareil.
+        </p>
+      )}
+
+      {pushSupporte() && (
+        <>
+          {erreur && <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm">{erreur}</div>}
+          <button
+            onClick={toggleAbonnement}
+            disabled={chargement || enCours}
+            className={abonne ? 'btn-secondary w-full mb-lg' : 'btn-primary w-full mb-lg'}
+          >
+            {enCours ? 'Un instant…' : abonne ? 'Désactiver les notifications sur cet appareil' : 'Activer les notifications sur cet appareil'}
+          </button>
+
+          <p className="text-xs uppercase tracking-[0.1em] font-semibold text-brand-petrol mb-sm">M'avertir quand :</p>
+          <div className="space-y-sm">
+            {TYPES_NOTIF.map(([champ, label]) => (
+              <label key={champ} className="flex items-center gap-sm text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={membre[champ]}
+                  onChange={() => togglePreference(champ)}
+                  className="w-4 h-4 accent-brand-petrol"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

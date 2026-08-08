@@ -21,6 +21,11 @@ export type Membre = {
   a_un_compte: boolean
   doit_changer_mdp: boolean
   photo_url: string | null
+  acces_candidatures: boolean
+  notif_reunions: boolean
+  notif_idees: boolean
+  notif_votes: boolean
+  notif_documents: boolean
   created_at: string
   updated_at: string
 }
@@ -163,6 +168,26 @@ export type VoteReponse = {
   created_at: string
 }
 
+export type ReponsesQuizRecrutement = {
+  age?: 'under16' | 'jsp' | 'ok' | 'over55'
+  residence?: 'oui' | 'non'
+  dispo?: 'oui' | 'peut_etre' | 'non'
+  droits_civiques?: 'oui' | 'non' | 'pas_sur'
+  casier?: 'oui' | 'non' | 'pas_sur'
+}
+
+export type Candidature = {
+  id: string
+  prenom: string
+  nom: string
+  telephone: string | null
+  email: string | null
+  reponses: ReponsesQuizRecrutement
+  statut_eligibilite: 'eligible' | 'a_verifier' | 'pas_encore'
+  traite: boolean
+  created_at: string
+}
+
 export type Idee = {
   id: string
   numero_suivi: number
@@ -183,6 +208,7 @@ export type Reunion = {
   date_reunion: string
   statut: 'brouillon' | 'publie'
   bureau_uniquement: boolean
+  evenement_id: string | null
   ordre_du_jour: string | null
   decisions: string | null
   prochaines_echeances: string | null
