@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /membres
+Disallow: /documents
+Disallow: /cotisations
+Disallow: /calendrier
+Disallow: /mon-compte
+Disallow: /votes
+Disallow: /idees
+Disallow: /taches
+Disallow: /reunions
+Disallow: /candidatures
+
+Sitemap: https://pompiers-lamadeleine.fr/sitemap.xml
