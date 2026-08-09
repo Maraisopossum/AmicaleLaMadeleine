@@ -84,8 +84,8 @@ export default function Recrutement() {
   const progression = etapeIdx >= 0 ? ((etapeIdx) / ETAPES.length) * 100 : ecran === 'resultat' ? 100 : 0
 
   return (
-    <div className="min-h-screen bg-brand-parchment font-body text-brand-ink flex flex-col items-center">
-      <div className="w-full max-w-md min-h-screen flex flex-col bg-brand-paper">
+    <div className="min-h-screen bg-brand-parchment font-body text-brand-ink flex flex-col items-center md:justify-center md:py-xxl">
+      <div className="w-full max-w-md min-h-screen md:min-h-0 flex flex-col bg-brand-paper md:rounded-lg md:shadow-2xl md:overflow-hidden md:border md:border-brand-hairline">
         <header className="bg-brand-ink px-lg pt-lg pb-md">
           <div className="flex items-center justify-between mb-sm">
             <Link to="/" className="font-display font-bold uppercase tracking-[0.08em] text-brand-parchment text-sm hover:text-brand-sky transition-colors">
@@ -127,8 +127,8 @@ export default function Recrutement() {
 
           {ecran === 'q1' && (
             <Question
-              numero={1} titre="Quel âge as-tu ?"
-              sousTitre="L'engagement en tant que SPV est possible entre 18 et 55 ans."
+              numero={1} titre="T'as quel âge, chef ?"
+              sousTitre="Le volontariat, c'est entre 18 et 55 ans."
               options={[
                 ['Moins de 16 ans', () => repondre('age', 'under16')],
                 ['16 - 17 ans', () => repondre('age', 'jsp')],
@@ -140,8 +140,8 @@ export default function Recrutement() {
 
           {ecran === 'q2' && (
             <Question
-              numero={2} titre="Tu vis à proximité de la caserne ?"
-              sousTitre="Pouvoir rejoindre la caserne rapidement lors d'une alerte, c'est la base de la garde en astreinte."
+              numero={2} titre="T'habites pas loin de la caserne ?"
+              sousTitre="Pour rappliquer vite fait quand ça sonne, la proximité c'est la clé."
               options={[
                 ['Oui', () => repondre('residence', 'oui')],
                 ['Non', () => repondre('residence', 'non')],
@@ -152,8 +152,8 @@ export default function Recrutement() {
 
           {ecran === 'q3' && (
             <Question
-              numero={3} titre="Tu peux te rendre disponible régulièrement ?"
-              sousTitre="Gardes, astreintes et formations : le volontariat demande un vrai engagement de temps, en plus de ta vie pro."
+              numero={3} titre="T'as du temps à nous consacrer ?"
+              sousTitre="Gardes, astreintes, formations... l'engagement, ça se prépare dans l'agenda."
               options={[
                 ['Oui, je peux m\'organiser', () => repondre('dispo', 'oui')],
                 ['Je ne sais pas encore', () => repondre('dispo', 'peut_etre')],
@@ -165,8 +165,8 @@ export default function Recrutement() {
 
           {ecran === 'q4' && (
             <Question
-              numero={4} titre="Tu es en pleine possession de tes droits civiques ?"
-              sousTitre="C'est une condition légale pour devenir SPV — aucun justificatif ne t'est demandé aujourd'hui."
+              numero={4} titre="Petite question sérieuse : tu es en pleine possession de tes droits civiques ?"
+              sousTitre="C'est une condition légale — aucun justificatif ne t'est demandé aujourd'hui."
               options={[
                 ['Oui', () => repondre('droits_civiques', 'oui')],
                 ['Non', () => repondre('droits_civiques', 'non')],
@@ -178,8 +178,8 @@ export default function Recrutement() {
 
           {ecran === 'q5' && (
             <Question
-              numero={5} titre="Ton casier judiciaire est vierge ?"
-              sousTitre="(bulletin n°2) — autre condition légale, sans justificatif à ce stade."
+              numero={5} titre="Et ton casier judiciaire, il est nickel ?"
+              sousTitre="(bulletin n°2) — même chose, on te demande juste de répondre honnêtement."
               options={[
                 ['Oui', () => repondre('casier', 'oui')],
                 ['Non', () => repondre('casier', 'non')],

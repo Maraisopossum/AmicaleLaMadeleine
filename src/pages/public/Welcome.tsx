@@ -61,6 +61,13 @@ export default function Welcome() {
           </div>
 
           <div className="border-t border-brand-parchment/20 pt-lg">
+            <Link to="/recrutement" className="block mb-md">
+              <img
+                src="/recrutement-affiche.webp"
+                alt="We need you — Rejoignez les Sapeurs-Pompiers de La Madeleine"
+                className="w-full h-auto object-contain border-b border-brand-parchment/20"
+              />
+            </Link>
             <p className="text-brand-sky uppercase text-xs tracking-[0.2em] font-semibold mb-xs">Envie de nous rejoindre ?</p>
             <p className="text-sm text-brand-parchment/70 mb-md">
               Découvre en 1 minute si tu peux devenir sapeur-pompier volontaire.
