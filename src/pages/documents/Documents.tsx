@@ -211,8 +211,9 @@ export default function Documents() {
               )}
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre</label>
+                <label htmlFor="doc-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre</label>
                 <input
+                  id="doc-titre"
                   required
                   value={titre}
                   onChange={(e) => setTitre(e.target.value)}
@@ -221,8 +222,9 @@ export default function Documents() {
               </div>
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description (optionnel)</label>
+                <label htmlFor="doc-description" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description (optionnel)</label>
                 <textarea
+                  id="doc-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
@@ -231,8 +233,9 @@ export default function Documents() {
               </div>
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Type</label>
+                <label htmlFor="doc-type" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Type</label>
                 <select
+                  id="doc-type"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -242,8 +245,9 @@ export default function Documents() {
               </div>
 
               <div className="mb-lg">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fichier (PDF, JPG, PNG)</label>
+                <label htmlFor="doc-fichier" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fichier (PDF, JPG, PNG)</label>
                 <input
+                  id="doc-fichier"
                   type="file"
                   required
                   accept=".pdf,.jpg,.jpeg,.png"

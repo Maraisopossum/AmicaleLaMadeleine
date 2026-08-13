@@ -9,7 +9,8 @@
     "lint": "eslint src --ext .ts,.tsx",
     "supabase:generate": "supabase gen types typescript --local > src/lib/database.types.ts",
     "supabase:push": "supabase db push",
-    "supabase:start": "supabase start"
+    "supabase:start": "supabase start",
+    "qr": "node scripts/generate-qr-code.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -30,6 +31,7 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
     "postcss": "^8.4.0",
+    "qrcode": "^1.5.4",
     "sharp": "^0.35.3",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.4.0",

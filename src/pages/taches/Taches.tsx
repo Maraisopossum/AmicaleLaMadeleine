@@ -221,16 +221,18 @@ export default function Taches() {
               )}
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
+                <label htmlFor="tache-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
                 <input
+                  id="tache-titre"
                   required value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />
               </div>
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
+                <label htmlFor="tache-description" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
                 <textarea
+                  id="tache-description"
                   value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol resize-none"
                 />
@@ -238,8 +240,9 @@ export default function Taches() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Responsable</label>
+                  <label htmlFor="tache-responsable" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Responsable</label>
                   <select
+                    id="tache-responsable"
                     value={form.responsableId}
                     onChange={e => setForm(f => ({ ...f, responsableId: e.target.value }))}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm mb-xs focus:outline-none focus:border-brand-petrol"
@@ -251,6 +254,7 @@ export default function Taches() {
                   </select>
                   {!form.responsableId && (
                     <input
+                      aria-label="Nom libre du responsable"
                       placeholder="Nom libre" value={form.responsableNomLibre}
                       onChange={e => setForm(f => ({ ...f, responsableNomLibre: e.target.value }))}
                       className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -258,8 +262,9 @@ export default function Taches() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Deadline</label>
+                  <label htmlFor="tache-deadline" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Deadline</label>
                   <input
+                    id="tache-deadline"
                     type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                   />
@@ -268,8 +273,9 @@ export default function Taches() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Statut</label>
+                  <label htmlFor="tache-statut" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Statut</label>
                   <select
+                    id="tache-statut"
                     value={form.statut} onChange={e => setForm(f => ({ ...f, statut: e.target.value as Tache['statut'] }))}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                   >
@@ -279,8 +285,9 @@ export default function Taches() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date de réalisation</label>
+                  <label htmlFor="tache-date-realisation" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date de réalisation</label>
                   <input
+                    id="tache-date-realisation"
                     type="date" value={form.dateRealisation} onChange={e => setForm(f => ({ ...f, dateRealisation: e.target.value }))}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                   />
@@ -288,8 +295,9 @@ export default function Taches() {
               </div>
 
               <div className="mb-lg">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Réalisée par</label>
+                <label htmlFor="tache-realisateur" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Réalisée par</label>
                 <select
+                  id="tache-realisateur"
                   value={form.realisateurId}
                   onChange={e => setForm(f => ({ ...f, realisateurId: e.target.value }))}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm mb-xs focus:outline-none focus:border-brand-petrol"
@@ -301,6 +309,7 @@ export default function Taches() {
                 </select>
                 {!form.realisateurId && (
                   <input
+                    aria-label="Nom libre du réalisateur"
                     placeholder="Nom libre" value={form.realisateurNomLibre}
                     onChange={e => setForm(f => ({ ...f, realisateurNomLibre: e.target.value }))}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"

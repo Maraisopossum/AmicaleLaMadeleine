@@ -179,15 +179,17 @@ export default function Idees() {
                 <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm">{formError}</div>
               )}
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
+                <label htmlFor="idee-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
                 <input
+                  id="idee-titre"
                   required value={titre} onChange={e => setTitre(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />
               </div>
               <div className="mb-lg">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
+                <label htmlFor="idee-description" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
                 <textarea
+                  id="idee-description"
                   value={description} onChange={e => setDescription(e.target.value)} rows={4}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol resize-none"
                 />
@@ -213,8 +215,9 @@ export default function Idees() {
             <p className="text-sm text-brand-ink/60 mb-lg">{editing.titre}</p>
             <form onSubmit={handleSaveEdit}>
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Statut</label>
+                <label htmlFor="idee-statut" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Statut</label>
                 <select
+                  id="idee-statut"
                   value={editStatut} onChange={e => setEditStatut(e.target.value as Idee['statut'])}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 >
@@ -224,8 +227,9 @@ export default function Idees() {
                 </select>
               </div>
               <div className="mb-lg">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Réponse</label>
+                <label htmlFor="idee-reponse" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Réponse</label>
                 <textarea
+                  id="idee-reponse"
                   value={editReponse} onChange={e => setEditReponse(e.target.value)} rows={4}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol resize-none"
                 />

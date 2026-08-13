@@ -103,16 +103,18 @@ export default function Reunions() {
                 <div className="border border-brand-brick text-brand-brick p-md mb-md text-sm">{formError}</div>
               )}
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
+                <label htmlFor="reunion-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
                 <input
+                  id="reunion-titre"
                   required value={titre} onChange={e => setTitre(e.target.value)}
                   placeholder="Ex : Réunion de bureau, Assemblée générale…"
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />
               </div>
               <div className="mb-lg">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date *</label>
+                <label htmlFor="reunion-date" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date *</label>
                 <input
+                  id="reunion-date"
                   type="date" required value={dateReunion} onChange={e => setDateReunion(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />

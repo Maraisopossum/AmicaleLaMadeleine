@@ -27,6 +27,11 @@
 //   WEBHOOK_SECRET                        (chaîne aléatoire, cf. README.md)
 // SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournies automatiquement.
 //
+// Secret optionnel :
+//   ADMIN_EMAIL  (même valeur que VITE_ADMIN_EMAIL côté front) — permet
+//   d'inclure le compte admin fixe dans l'email "Nouvelle candidature" même
+//   s'il n'a pas de ligne `membres` avec acces_candidatures=true.
+//
 // Déploiement :
 //   supabase functions deploy send-notification
 
@@ -39,7 +44,19 @@ const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')!
 const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!
 const webhookSecret = Deno.env.get('WEBHOOK_SECRET')!
+const adminEmail = Deno.env.get('ADMIN_EMAIL') ?? null
 const SITE_URL = 'https://pompiers-lamadeleine.fr'
+
+// Les valeurs interpolées dans les emails (corpsEmailCandidature notamment)
+// peuvent venir d'une saisie publique non authentifiée (quiz de recrutement) :
+// échapper avant d'injecter dans le HTML envoyé par email.
+function echapperHtml(valeur: string): string {
+  return valeur
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
 webpush.setVapidDetails('mailto:contact@amicale-lamadeleine.fr', vapidPublicKey, vapidPrivateKey)
 
@@ -52,7 +69,32 @@ type WebhookPayload = {
   old_record: any | null
 }
 
-type NotificationAMi = { titre: string; corps: string; url: string; audienceFiltre: string; parEmail: boolean } | null
+type NotificationAMi = { titre: string; corps: string; corpsEmail?: string; url: string; audienceFiltre: string; parEmail: boolean } | null
+
+const LABELS_ELIGIBILITE: Record<string, string> = {
+  eligible: 'Éligible',
+  a_verifier: 'À vérifier',
+  pas_encore: 'Pas encore éligible',
+}
+
+// deno-lint-ignore no-explicit-any
+function corpsEmailCandidature(record: any): string {
+  const prenom = echapperHtml(String(record.prenom ?? ''))
+  const nom = echapperHtml(String(record.nom ?? ''))
+  const telephone = record.telephone ? echapperHtml(String(record.telephone)) : null
+  const email = record.email ? echapperHtml(String(record.email)) : null
+  const coordonnees = [
+    telephone ? `Téléphone : <a href="tel:${telephone}" style="color:#181410;">${telephone}</a>` : null,
+    email ? `Email : <a href="mailto:${email}" style="color:#181410;">${email}</a>` : null,
+  ].filter(Boolean).join('<br>')
+  const statut = LABELS_ELIGIBILITE[record.statut_eligibilite as string] ?? echapperHtml(String(record.statut_eligibilite ?? ''))
+
+  return [
+    `<p><strong>${prenom} ${nom}</strong> a laissé ses coordonnées sur le quiz de recrutement.</p>`,
+    coordonnees ? `<p>${coordonnees}</p>` : '',
+    `<p>Statut d'éligibilité : <strong>${statut}</strong></p>`,
+  ].filter(Boolean).join('')
+}
 
 const ROLES_BUREAU = ['president', 'secretaire', 'tresorier', 'adjoint_president', 'adjoint_secretaire', 'adjoint_tresorier']
 
@@ -63,6 +105,7 @@ function calculerNotification(payload: WebhookPayload): NotificationAMi {
     return {
       titre: 'Nouvelle candidature',
       corps: `${record.prenom} ${record.nom} a laissé ses coordonnées sur le quiz de recrutement.`,
+      corpsEmail: corpsEmailCandidature(record),
       url: '/candidatures',
       audienceFiltre: 'acces_candidatures',
       parEmail: true,
@@ -176,13 +219,20 @@ Deno.serve(async (req) => {
       const { data } = await supabase.from('membres').select('email').in('statut', payload.record.statuts_eligibles || [])
       destinataires = data || []
     }
+    // Le compte admin fixe (cf. CLAUDE.md) a accès aux candidatures sans
+    // forcément avoir de ligne `membres` avec acces_candidatures=true —
+    // l'ajouter explicitement pour ne pas le priver de cette notification.
+    if (notification.audienceFiltre === 'acces_candidatures' && adminEmail && !destinataires.some(d => d.email === adminEmail)) {
+      destinataires = [...destinataires, { email: adminEmail }]
+    }
 
     const lienComplet = `${SITE_URL}${notification.url}`
+    const corpsHtml = notification.corpsEmail ?? `<p>${notification.corps}</p>`
     for (const destinataire of destinataires) {
       const resultat = await envoyerEmail(
         destinataire.email,
         notification.titre,
-        `<p>${notification.corps}</p><p><a href="${lienComplet}" style="color:#9E2222;">Voir sur l'espace membre →</a></p>`
+        `${corpsHtml}<p><a href="${lienComplet}" style="color:#9E2222;">Voir sur l'espace membre →</a></p>`
       )
       if (resultat.ok) envoyesEmail++
     }

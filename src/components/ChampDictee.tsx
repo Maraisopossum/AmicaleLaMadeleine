@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 type SpeechRecognitionResultLike = { transcript: string }
 type SpeechRecognitionEventLike = {
@@ -35,6 +35,7 @@ export default function ChampDictee({ label, value, onChange, rows = 4, placehol
   const baseValueRef = useRef('')
   const accumuleRef = useRef('')
   const supported = !!getSpeechRecognitionCtor()
+  const id = useId()
 
   useEffect(() => () => recognitionRef.current?.stop(), [])
 
@@ -72,7 +73,7 @@ export default function ChampDictee({ label, value, onChange, rows = 4, placehol
   return (
     <div className="mb-md">
       <div className="flex items-center justify-between mb-xs">
-        <label className="block text-xs uppercase tracking-[0.1em] font-semibold text-brand-petrol">{label}</label>
+        <label htmlFor={id} className="block text-xs uppercase tracking-[0.1em] font-semibold text-brand-petrol">{label}</label>
         {supported && (
           <button
             type="button"
@@ -84,6 +85,8 @@ export default function ChampDictee({ label, value, onChange, rows = 4, placehol
         )}
       </div>
       <textarea
+        id={id}
+        aria-label={label || 'Contenu de la section'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}

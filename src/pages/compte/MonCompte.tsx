@@ -129,10 +129,11 @@ export default function MonCompte() {
 
             <form onSubmit={handleProfilSubmit}>
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
+                <label htmlFor="compte-prenom" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
                   Prénom
                 </label>
                 <input
+                  id="compte-prenom"
                   value={prenom}
                   onChange={(e) => setPrenom(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -140,10 +141,11 @@ export default function MonCompte() {
                 />
               </div>
               <div className="mb-lg">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
+                <label htmlFor="compte-nom" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
                   Nom
                 </label>
                 <input
+                  id="compte-nom"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -171,10 +173,11 @@ export default function MonCompte() {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-md">
-              <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
+              <label htmlFor="compte-nouveau-mdp" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
                 Nouveau mot de passe
               </label>
               <input
+                id="compte-nouveau-mdp"
                 type="password"
                 value={nouveauMdp}
                 onChange={(e) => setNouveauMdp(e.target.value)}
@@ -184,10 +187,11 @@ export default function MonCompte() {
               />
             </div>
             <div className="mb-lg">
-              <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
+              <label htmlFor="compte-confirmation-mdp" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
                 Confirmer le mot de passe
               </label>
               <input
+                id="compte-confirmation-mdp"
                 type="password"
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}

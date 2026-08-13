@@ -16,6 +16,7 @@ export default function VotePage() {
   const [vote, setVote] = useState<Vote | null>(null)
   const [questions, setQuestions] = useState<QuestionAvecOptions[]>([])
   const [toutesReponses, setToutesReponses] = useState<VoteReponse[]>([])
+  const [nomsMembres, setNomsMembres] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [reponses, setReponses] = useState<Record<string, ReponseLocale>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -56,6 +57,15 @@ export default function VotePage() {
       const { data: toutesRep } = await supabase
         .from('vote_reponses').select('*').eq('vote_id', id)
       setToutesReponses(toutesRep || [])
+
+      if (!voteData.anonyme && isAdmin) {
+        const membreIds = [...new Set((toutesRep || []).map(r => r.membre_id))]
+        if (membreIds.length) {
+          const { data: membresData } = await supabase
+            .from('membres').select('id, prenom, nom').in('id', membreIds)
+          setNomsMembres(Object.fromEntries((membresData || []).map(m => [m.id, `${m.prenom} ${m.nom}`])))
+        }
+      }
     }
 
     setLoading(false)
@@ -93,17 +103,18 @@ export default function VotePage() {
     }
 
     setSubmitting(true)
-    for (const q of questions) {
+    const lignes = questions.map(q => {
       const r = reponses[q.id]
-      const { error } = await supabase.from('vote_reponses').insert({
+      return {
         vote_id: vote.id,
         question_id: q.id,
         membre_id: membre.id,
         valeur_oui_non: q.type === 'oui_non' ? r?.valeur_oui_non ?? null : null,
         option_ids: q.type !== 'oui_non' ? r?.option_ids ?? null : null,
-      })
-      if (error) { setSubmitError(error.message); setSubmitting(false); return }
-    }
+      }
+    })
+    const { error } = await supabase.from('vote_reponses').insert(lignes)
+    if (error) { setSubmitError(error.message); setSubmitting(false); return }
 
     setSubmitting(false)
     setSubmitted(true)
@@ -198,7 +209,7 @@ export default function VotePage() {
                         <BarreResultat label="Oui" count={res.oui} total={res.total} />
                         <BarreResultat label="Non" count={res.non} total={res.total} />
                         {!vote.anonyme && res.reponsesQ.length > 0 && isAdmin && (
-                          <DetailNonAnonyme reponses={res.reponsesQ} type="oui_non" />
+                          <DetailNonAnonyme reponses={res.reponsesQ} type="oui_non" noms={nomsMembres} />
                         )}
                       </div>
                     ) : (
@@ -212,7 +223,7 @@ export default function VotePage() {
                           />
                         ))}
                         {!vote.anonyme && res.reponsesQ.length > 0 && isAdmin && (
-                          <DetailNonAnonyme reponses={res.reponsesQ} type="options" options={q.options} />
+                          <DetailNonAnonyme reponses={res.reponsesQ} type="options" options={q.options} noms={nomsMembres} />
                         )}
                       </div>
                     )}
@@ -344,10 +355,11 @@ function BarreResultat({ label, count, total }: { label: string; count: number; 
   )
 }
 
-function DetailNonAnonyme({ reponses, type, options }: {
+function DetailNonAnonyme({ reponses, type, options, noms }: {
   reponses: VoteReponse[]
   type: 'oui_non' | 'options'
   options?: VoteOption[]
+  noms: Record<string, string>
 }) {
   return (
     <details className="mt-md text-xs text-brand-ink/60">
@@ -355,7 +367,7 @@ function DetailNonAnonyme({ reponses, type, options }: {
       <ul className="mt-sm space-y-xxs pl-md">
         {reponses.map(r => (
           <li key={r.id}>
-            <span className="font-medium text-brand-ink">{r.membre_id}</span>
+            <span className="font-medium text-brand-ink">{noms[r.membre_id] || r.membre_id}</span>
             {' → '}
             {type === 'oui_non'
               ? (r.valeur_oui_non ? 'Oui' : 'Non')

@@ -64,6 +64,12 @@ export default function Recrutement() {
     setErreur('')
     if (!prenom.trim() || !nom.trim()) { setErreur('Prénom et nom sont obligatoires.'); return }
     if (!telephone.trim() && !email.trim()) { setErreur('Laisse au moins un téléphone ou un email.'); return }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setErreur("L'email n'a pas l'air valide."); return }
+    const telephoneNettoye = telephone.trim().replace(/[\s.\-()]/g, '')
+    if (telephoneNettoye && !/^(\+33|0)[0-9]{9}$/.test(telephoneNettoye)) {
+      setErreur('Le numéro de téléphone doit contenir 10 chiffres (ou +33 suivi de 9 chiffres).')
+      return
+    }
 
     setEnvoi(true)
     const { error } = await supabase.from('candidatures').insert({
@@ -103,7 +109,6 @@ export default function Recrutement() {
         <main className="flex-1 flex flex-col px-lg py-xl">
           {ecran === 'intro' && (
             <div className="flex flex-col flex-1">
-              <p className="eyebrow mb-sm">Journée portes ouvertes</p>
               <h1 className="font-display font-extrabold uppercase text-4xl leading-[0.95] mb-md">
                 T'as ce qu'il faut pour porter le casque ?
               </h1>
@@ -203,14 +208,18 @@ export default function Recrutement() {
                   <p className="font-display font-bold uppercase text-base mb-md">Laisse tes coordonnées</p>
                   {erreur && <div className="border border-brand-brick text-brand-brick p-sm mb-md text-xs">{erreur}</div>}
                   <div className="grid grid-cols-2 gap-sm mb-sm">
-                    <input required placeholder="Prénom" value={prenom} onChange={e => setPrenom(e.target.value)}
+                    <label htmlFor="candidat-prenom" className="sr-only">Prénom</label>
+                    <input id="candidat-prenom" required placeholder="Prénom" value={prenom} onChange={e => setPrenom(e.target.value)}
                       className="border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm focus:outline-none focus:border-brand-petrol" />
-                    <input required placeholder="Nom" value={nom} onChange={e => setNom(e.target.value)}
+                    <label htmlFor="candidat-nom" className="sr-only">Nom</label>
+                    <input id="candidat-nom" required placeholder="Nom" value={nom} onChange={e => setNom(e.target.value)}
                       className="border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm focus:outline-none focus:border-brand-petrol" />
                   </div>
-                  <input placeholder="Téléphone" value={telephone} onChange={e => setTelephone(e.target.value)}
+                  <label htmlFor="candidat-telephone" className="sr-only">Téléphone</label>
+                  <input id="candidat-telephone" placeholder="Téléphone" value={telephone} onChange={e => setTelephone(e.target.value)}
                     className="w-full border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm mb-sm focus:outline-none focus:border-brand-petrol" />
-                  <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
+                  <label htmlFor="candidat-email" className="sr-only">Email</label>
+                  <input id="candidat-email" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}
                     className="w-full border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm mb-md focus:outline-none focus:border-brand-petrol" />
                   <button type="submit" disabled={envoi} className="btn-primary w-full text-sm">
                     {envoi ? 'Envoi…' : 'Envoyer mes coordonnées'}
@@ -239,7 +248,7 @@ export default function Recrutement() {
         </main>
 
         <footer className="text-center py-md text-xs text-brand-ink/40">
-          Amicale des Sapeurs-Pompiers de La Madeleine · Journée portes ouvertes
+          Amicale des Sapeurs-Pompiers de La Madeleine
         </footer>
       </div>
     </div>
@@ -330,7 +339,7 @@ function Question({ numero, titre, sousTitre, options, onRetour }: {
       <p className="text-xs uppercase tracking-[0.08em] font-semibold text-brand-ink/40 mb-sm">Question {numero} / 5</p>
       <h2 className="font-display font-bold uppercase text-2xl leading-tight mb-xs">{titre}</h2>
       <p className="text-sm text-brand-ink/60 mb-xl leading-relaxed">{sousTitre}</p>
-      <div className="flex flex-col gap-sm mt-auto">
+      <div className="flex flex-col gap-sm">
         {options.map(([label, onClick]) => (
           <button
             key={label}

@@ -55,8 +55,9 @@ export default function Login() {
           )}
 
           <div className="mb-md">
-            <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Identifiant</label>
+            <label htmlFor="login-identifiant" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Identifiant</label>
             <input
+              id="login-identifiant"
               type="text"
               value={identifiant}
               onChange={(e) => setIdentifiant(e.target.value)}
@@ -66,8 +67,9 @@ export default function Login() {
           </div>
 
           <div className="mb-lg">
-            <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Mot de passe</label>
+            <label htmlFor="login-password" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Mot de passe</label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

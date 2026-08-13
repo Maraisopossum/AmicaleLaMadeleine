@@ -6,5 +6,6 @@ dist/
 Thumbs.db
 .cache/
 supabase/.temp/
+qr-codes/
 .vscode/
 .idea/

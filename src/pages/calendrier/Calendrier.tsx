@@ -427,8 +427,9 @@ END:VCALENDAR`
               )}
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre</label>
+                <label htmlFor="evt-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre</label>
                 <input
+                  id="evt-titre"
                   required
                   value={form.titre}
                   onChange={(e) => setForm({ ...form, titre: e.target.value })}
@@ -438,8 +439,9 @@ END:VCALENDAR`
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Type</label>
+                  <label htmlFor="evt-type" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Type</label>
                   <select
+                    id="evt-type"
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -448,8 +450,9 @@ END:VCALENDAR`
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Lieu</label>
+                  <label htmlFor="evt-lieu" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Lieu</label>
                   <input
+                    id="evt-lieu"
                     value={form.lieu}
                     onChange={(e) => setForm({ ...form, lieu: e.target.value })}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -459,8 +462,9 @@ END:VCALENDAR`
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
+                  <label htmlFor="evt-date-debut" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
                   <input
+                    id="evt-date-debut"
                     type="datetime-local"
                     step={900}
                     required
@@ -470,8 +474,9 @@ END:VCALENDAR`
                   />
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fin (optionnel)</label>
+                  <label htmlFor="evt-date-fin" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fin (optionnel)</label>
                   <input
+                    id="evt-date-fin"
                     type="datetime-local"
                     step={900}
                     value={form.date_fin}
@@ -482,8 +487,9 @@ END:VCALENDAR`
               </div>
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
+                <label htmlFor="evt-description" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
                 <textarea
+                  id="evt-description"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -492,8 +498,9 @@ END:VCALENDAR`
               </div>
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Lien Google Calendar (optionnel)</label>
+                <label htmlFor="evt-lien-google" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Lien Google Calendar (optionnel)</label>
                 <input
+                  id="evt-lien-google"
                   value={form.lien_google}
                   onChange={(e) => setForm({ ...form, lien_google: e.target.value })}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId, cloneElement, isValidElement } from 'react'
 import { supabase, Membre } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import ModuleHeader from '../../components/Layout/ModuleHeader'
@@ -474,6 +474,7 @@ export default function Membres() {
                   <td className="py-sm px-md">
                     {canManageMembres ? (
                       <select
+                        aria-label={`Rôle de ${membre.prenom} ${membre.nom}`}
                         value={membre.role}
                         onChange={(e) => handleChangeRole(membre, e.target.value)}
                         className={`tag bg-brand-paper ${getRoleClass(membre.role)}`}
@@ -489,6 +490,7 @@ export default function Membres() {
                   <td className="py-sm px-md">
                     {canManageMembres ? (
                       <select
+                        aria-label={`Statut de ${membre.prenom} ${membre.nom}`}
                         value={membre.statut}
                         onChange={(e) => handleChangeStatut(membre, e.target.value)}
                         className={`tag bg-brand-paper ${getStatutClass(membre.statut)}`}
@@ -682,10 +684,12 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 }
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  const id = useId()
+  const champ = isValidElement<{ id?: string }>(children) ? cloneElement(children, { id }) : children
   return (
     <div className={className}>
-      <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">{label}</label>
-      {children}
+      <label htmlFor={id} className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">{label}</label>
+      {champ}
     </div>
   )
 }

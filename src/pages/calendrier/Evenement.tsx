@@ -186,18 +186,21 @@ function ProgrammeSection({ section, isAdmin, onSaved }: { section: EvenementSec
             {items.map((item, i) => (
               <div key={i} className="grid grid-cols-[80px_1fr_1fr_auto] gap-sm items-start">
                 <input
+                  aria-label={`Heure de la ligne ${i + 1}`}
                   placeholder="Heure"
                   value={item.heure}
                   onChange={(e) => setItems(items.map((it, j) => j === i ? { ...it, heure: e.target.value } : it))}
                   className="border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm"
                 />
                 <input
+                  aria-label={`Titre de la ligne ${i + 1}`}
                   placeholder="Titre"
                   value={item.titre}
                   onChange={(e) => setItems(items.map((it, j) => j === i ? { ...it, titre: e.target.value } : it))}
                   className="border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm"
                 />
                 <input
+                  aria-label={`Description de la ligne ${i + 1}`}
                   placeholder="Description (optionnel)"
                   value={item.description || ''}
                   onChange={(e) => setItems(items.map((it, j) => j === i ? { ...it, description: e.target.value } : it))}
@@ -243,6 +246,7 @@ function InfosSection({ section, isAdmin, onSaved }: { section: EvenementSection
       ) : (
         <>
           <textarea
+            aria-label="Infos pratiques"
             value={texte}
             onChange={(e) => setTexte(e.target.value)}
             rows={6}

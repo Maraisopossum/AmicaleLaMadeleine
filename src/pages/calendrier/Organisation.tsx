@@ -215,6 +215,7 @@ function StandsPanel({
       {isAdmin && (
         <div className="flex gap-sm pt-md border-t border-brand-hairline">
           <input
+            aria-label="Nom du nouveau stand"
             value={nouveauTitre}
             onChange={(e) => setNouveauTitre(e.target.value)}
             placeholder="Nom du nouveau stand (ex: Visite des camions)"
@@ -269,6 +270,7 @@ function StandCard({
       <div className="border border-brand-hairline p-md space-y-sm">
         <div className="flex gap-sm">
           <input
+            aria-label="Icône du stand"
             value={icone}
             onChange={(e) => setIcone(e.target.value)}
             maxLength={2}
@@ -276,12 +278,14 @@ function StandCard({
             className="w-16 text-center border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
           />
           <input
+            aria-label="Titre du stand"
             value={titre}
             onChange={(e) => setTitre(e.target.value)}
             className="flex-1 border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
           />
         </div>
         <textarea
+          aria-label="Description du stand"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
@@ -289,6 +293,7 @@ function StandCard({
           className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
         />
         <select
+          aria-label="Gestionnaire du stand"
           value={responsableId}
           onChange={(e) => setResponsableId(e.target.value)}
           className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
@@ -409,18 +414,21 @@ function DeadlinesPanel({
       {(peutCreerGlobale || standsGerables.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_160px_auto] gap-sm pt-md border-t border-brand-hairline items-start">
           <input
+            aria-label="Libellé de la deadline"
             value={libelle}
             onChange={(e) => setLibelle(e.target.value)}
             placeholder="Tâche à faire"
             className="border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
           />
           <input
+            aria-label="Date d'échéance"
             type="date"
             value={dateEcheance}
             onChange={(e) => setDateEcheance(e.target.value)}
             className="border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
           />
           <select
+            aria-label="Stand concerné"
             value={standId}
             onChange={(e) => setStandId(e.target.value)}
             className="border border-brand-hairline bg-brand-parchment px-md py-sm text-sm focus:outline-none focus:border-brand-petrol"
@@ -490,16 +498,16 @@ function PlanningPanel({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-md max-w-md">
         <div>
-          <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
-          <input type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+          <label htmlFor="planning-config-debut" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Début</label>
+          <input id="planning-config-debut" type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fin</label>
-          <input type="time" value={heureFin} onChange={(e) => setHeureFin(e.target.value)} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+          <label htmlFor="planning-config-fin" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fin</label>
+          <input id="planning-config-fin" type="time" value={heureFin} onChange={(e) => setHeureFin(e.target.value)} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Créneau (min)</label>
-          <input type="number" min={15} step={15} value={duree} onChange={(e) => setDuree(Number(e.target.value))} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+          <label htmlFor="planning-config-duree" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Créneau (min)</label>
+          <input id="planning-config-duree" type="number" min={15} step={15} value={duree} onChange={(e) => setDuree(Number(e.target.value))} className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
         </div>
         <button onClick={sauverConfig} disabled={savingConfig} className="btn-primary text-xs col-span-3">
           Configurer le planning
@@ -541,16 +549,16 @@ function PlanningPanel({
           {isAdmin ? (
             <>
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.1em] text-brand-ink/50 mb-xxs">Début</label>
-                <input type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} className="w-24 border border-brand-hairline bg-brand-parchment px-sm py-xxs text-sm" />
+                <label htmlFor="planning-toolbar-debut" className="block text-[10px] uppercase tracking-[0.1em] text-brand-ink/50 mb-xxs">Début</label>
+                <input id="planning-toolbar-debut" type="time" value={heureDebut} onChange={(e) => setHeureDebut(e.target.value)} className="w-24 border border-brand-hairline bg-brand-parchment px-sm py-xxs text-sm" />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.1em] text-brand-ink/50 mb-xxs">Fin</label>
-                <input type="time" value={heureFin} onChange={(e) => setHeureFin(e.target.value)} className="w-24 border border-brand-hairline bg-brand-parchment px-sm py-xxs text-sm" />
+                <label htmlFor="planning-toolbar-fin" className="block text-[10px] uppercase tracking-[0.1em] text-brand-ink/50 mb-xxs">Fin</label>
+                <input id="planning-toolbar-fin" type="time" value={heureFin} onChange={(e) => setHeureFin(e.target.value)} className="w-24 border border-brand-hairline bg-brand-parchment px-sm py-xxs text-sm" />
               </div>
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.1em] text-brand-ink/50 mb-xxs">Créneau (min)</label>
-                <input type="number" min={15} step={15} value={duree} onChange={(e) => setDuree(Number(e.target.value))} className="w-20 border border-brand-hairline bg-brand-parchment px-sm py-xxs text-sm" />
+                <label htmlFor="planning-toolbar-duree" className="block text-[10px] uppercase tracking-[0.1em] text-brand-ink/50 mb-xxs">Créneau (min)</label>
+                <input id="planning-toolbar-duree" type="number" min={15} step={15} value={duree} onChange={(e) => setDuree(Number(e.target.value))} className="w-20 border border-brand-hairline bg-brand-parchment px-sm py-xxs text-sm" />
               </div>
               <button onClick={sauverConfig} disabled={savingConfig} title="Appliquer" className="btn-secondary text-xs px-sm py-xxs">
                 ↻
@@ -716,6 +724,7 @@ function CelluleEditor({
 
         <div className="space-y-sm mb-md">
           <select
+            aria-label="Choisir un membre"
             value={membreId}
             onChange={(e) => { setMembreId(e.target.value); setNomLibre('') }}
             className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
@@ -725,6 +734,7 @@ function CelluleEditor({
           </select>
           <p className="text-center text-xs text-brand-ink/40">ou</p>
           <input
+            aria-label="Nom d'un bénévole externe"
             value={nomLibre}
             onChange={(e) => { setNomLibre(e.target.value); setMembreId('') }}
             placeholder="Nom d'un bénévole externe"

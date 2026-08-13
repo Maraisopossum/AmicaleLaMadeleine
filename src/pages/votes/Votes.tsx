@@ -304,16 +304,18 @@ export default function Votes() {
               )}
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
+                <label htmlFor="vote-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre *</label>
                 <input
+                  id="vote-titre"
                   required value={titre} onChange={e => setTitre(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />
               </div>
 
               <div className="mb-md">
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
+                <label htmlFor="vote-description" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Description</label>
                 <textarea
+                  id="vote-description"
                   value={description} onChange={e => setDescription(e.target.value)} rows={2}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol resize-none"
                 />
@@ -321,8 +323,9 @@ export default function Votes() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-md">
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date de clôture</label>
+                  <label htmlFor="vote-date-fin" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date de clôture</label>
                   <input
+                    id="vote-date-fin"
                     type="datetime-local" value={dateFin} onChange={e => setDateFin(e.target.value)}
                     className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                   />
@@ -374,6 +377,7 @@ export default function Votes() {
                         )}
                       </div>
                       <input
+                        aria-label={`Libellé de la question ${qi + 1}`}
                         placeholder="Libellé de la question"
                         value={q.libelle}
                         onChange={e => updateQuestion(qi, { libelle: e.target.value })}
@@ -381,6 +385,7 @@ export default function Votes() {
                       />
                       <div className="flex items-center gap-md flex-wrap mb-sm">
                         <select
+                          aria-label={`Type de la question ${qi + 1}`}
                           value={q.type}
                           onChange={e => updateQuestion(qi, { type: e.target.value as NouvelleQuestion['type'], options: [], max_choix: null })}
                           className="border border-brand-hairline bg-brand-paper px-md py-sm focus:outline-none focus:border-brand-petrol"
@@ -408,6 +413,7 @@ export default function Votes() {
                           {q.options.map((o, oi) => (
                             <div key={oi} className="flex gap-xs">
                               <input
+                                aria-label={`Option ${oi + 1} de la question ${qi + 1}`}
                                 placeholder={`Option ${oi + 1}`}
                                 value={o}
                                 onChange={e => updateOption(qi, oi, e.target.value)}

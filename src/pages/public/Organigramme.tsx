@@ -280,10 +280,11 @@ function PosteCard({
 
       {canManageMembres && (
         <div className="mt-md print:hidden">
-          <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
+          <label htmlFor={`titulaire-${role}`} className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">
             Titulaire
           </label>
           <select
+            id={`titulaire-${role}`}
             value={titulaire?.id ?? ''}
             onChange={(e) => onAssign(role, e.target.value)}
             className="w-full border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm"

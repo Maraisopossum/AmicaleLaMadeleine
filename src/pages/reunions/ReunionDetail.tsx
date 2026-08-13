@@ -149,15 +149,17 @@ export default function ReunionDetail() {
           {isAdmin ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-md mb-lg print:hidden">
               <div>
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre</label>
+                <label htmlFor="reuniondetail-titre" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Titre</label>
                 <input
+                  id="reuniondetail-titre"
                   value={titre} onChange={e => setTitre(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date</label>
+                <label htmlFor="reuniondetail-date" className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Date</label>
                 <input
+                  id="reuniondetail-date"
                   type="date" value={dateReunion} onChange={e => setDateReunion(e.target.value)}
                   className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm focus:outline-none focus:border-brand-petrol"
                 />

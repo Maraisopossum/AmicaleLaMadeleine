@@ -36,11 +36,15 @@ function gabaritEmail(titre: string, corpsHtml: string): string {
   return `
 <!DOCTYPE html>
 <html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
   <body style="margin:0;padding:0;background:#F3ECDC;font-family:Arial,Helvetica,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3ECDC;padding:24px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F3ECDC;padding:24px 12px;">
       <tr>
         <td align="center">
-          <table width="480" cellpadding="0" cellspacing="0" style="background:#FBF7EE;border:1px solid #DCD0B4;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FBF7EE;border:1px solid #DCD0B4;">
             <tr>
               <td style="background:#181410;padding:20px 24px;">
                 <span style="color:#F3ECDC;font-weight:bold;text-transform:uppercase;letter-spacing:1px;font-size:14px;">
@@ -49,7 +53,7 @@ function gabaritEmail(titre: string, corpsHtml: string): string {
               </td>
             </tr>
             <tr>
-              <td style="padding:28px 24px;color:#181410;font-size:14px;line-height:1.6;">
+              <td style="padding:28px 24px;color:#181410;font-size:14px;line-height:1.6;word-break:break-word;">
                 <h1 style="font-size:20px;margin:0 0 16px;color:#181410;">${titre}</h1>
                 ${corpsHtml}
               </td>

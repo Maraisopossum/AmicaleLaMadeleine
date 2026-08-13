@@ -78,8 +78,9 @@ export default function Cotisations() {
 
       <main className="max-w-6xl mx-auto p-xl">
         <div className="flex items-center gap-md mb-xl flex-wrap print:hidden">
-          <label className="uppercase text-xs tracking-[0.1em] font-semibold text-brand-petrol">Année :</label>
+          <label htmlFor="cotisations-annee" className="uppercase text-xs tracking-[0.1em] font-semibold text-brand-petrol">Année :</label>
           <select
+            id="cotisations-annee"
             value={annee}
             onChange={(e) => setAnnee(Number(e.target.value))}
             className="border border-brand-hairline bg-brand-paper px-md py-sm focus:outline-none focus:border-brand-petrol"
