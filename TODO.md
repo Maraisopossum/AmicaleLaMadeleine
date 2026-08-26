@@ -12,7 +12,7 @@
 ## 🔐 Accès candidatures
 
 - [x] Fix ponctuel : ta fiche membre a `acces_candidatures = true` (sans ça, ni le push ni l'email des candidatures n'atteignaient personne — bug découvert en testant).
-- [ ] **Toujours aucune interface** pour désigner une 2e personne (le champ existe, rien ne le coche dans Membres.tsx). Dis-le-moi si tu veux que je construise la case à cocher.
+- [x] Case à cocher « Candidatures » ajoutée dans Membres.tsx (réservée président/admin) pour désigner qui a accès aux candidatures — plus besoin de passer par le SQL pour ajouter une 2e personne.
 
 ## 🎯 Recrutement / QR code
 

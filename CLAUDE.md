@@ -93,6 +93,16 @@ Design system Tailwind custom dans [tailwind.config.cjs](tailwind.config.cjs) pl
 
 Espacements sémantiques `xxs`→`section` (ex. `p-xl`, `gap-lg`) et rayons `xs`→`pill`, à utiliser plutôt que les classes Tailwind par défaut (`bg-red-600`, `p-4`, etc.) pour rester cohérent avec l'existant.
 
+## Gestion Supabase par Claude Code
+
+L'utilisateur a donné une autorisation permanente à Claude Code pour gérer le projet Supabase distant (« Amicale », ref `hdlclzjhxvzgajbdqbts`) sans redemander confirmation à chaque fois — CLI disponible via `npx supabase` (pas d'installation globale requise), déjà lié (`supabase link`) et authentifié dans cet environnement. Ça inclut notamment :
+- Pousser les migrations (`supabase db push`) après avoir vérifié qu'elles sont cohérentes avec le schéma existant.
+- Définir/mettre à jour des secrets d'edge functions (`supabase secrets set ...`).
+- Déployer les edge functions (`supabase functions deploy <nom>`).
+- Réparer l'historique de migrations (`supabase migration repair`) quand `db push` signale un écart local/remote — vérifier d'abord ce que contiennent les versions en cause (`supabase db query --linked "select version, name from supabase_migrations.schema_migrations where version = '...'"`) avant de les marquer `reverted`/`applied`, plutôt que de suivre aveuglément la suggestion de la CLI.
+
+Cette autorisation ne couvre que les opérations Supabase de ce projet ; les autres actions à risque (force-push Git, suppression de données, etc.) restent soumises aux règles de prudence habituelles.
+
 ## Notes
 
 Voir [DESIGN.md](DESIGN.md) pour les décisions de design UI/UX détaillées, et [AUDIT.md](AUDIT.md) pour l'historique d'un audit sécurité/qualité (RLS, gardes d'auth manquantes, etc.) déjà corrigé dans le code actuel.
