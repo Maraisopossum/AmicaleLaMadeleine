@@ -34,27 +34,21 @@ export default function Bar() {
       <main className="max-w-6xl mx-auto p-xl">
         {isBarManager && (
           <div className="flex gap-sm mb-lg border-b border-brand-hairline overflow-x-auto">
-            {([
-              { id: 'tableau', label: 'Tableau de bord' },
-              { id: 'caisse', label: 'Caisse' },
-              { id: 'stock', label: 'Stock' },
-              { id: 'ardoises', label: 'Ardoises' },
-              { id: 'mon-ardoise', label: 'Mon ardoise' },
-            ] as { id: SousOnglet; label: string }[]).map((onglet) => (
+            {(Object.keys(ONGLETS_LABELS) as SousOnglet[]).map((id) => (
               <button
-                key={onglet.id}
-                onClick={() => setSousOnglet(onglet.id)}
+                key={id}
+                onClick={() => setSousOnglet(id)}
                 className={`px-md py-sm text-xs uppercase tracking-[0.1em] font-semibold border-b-2 -mb-px whitespace-nowrap ${
-                  sousOnglet === onglet.id ? 'border-brand-petrol text-brand-petrol' : 'border-transparent text-brand-ink/50'
+                  sousOnglet === id ? 'border-brand-petrol text-brand-petrol' : 'border-transparent text-brand-ink/50'
                 }`}
               >
-                {onglet.label}
+                {ONGLETS_LABELS[id]}
               </button>
             ))}
           </div>
         )}
 
-        {sousOnglet === 'tableau' && isBarManager && <TableauDeBordPanel />}
+        {sousOnglet === 'tableau' && isBarManager && <TableauDeBordPanel onNavigate={setSousOnglet} />}
         {sousOnglet === 'caisse' && isBarManager && <CaissePanel barman={membre} />}
         {sousOnglet === 'stock' && isBarManager && <StockPanel />}
         {sousOnglet === 'ardoises' && isBarManager && <ArdoisesPanel barman={membre} />}
@@ -84,6 +78,22 @@ function formatDateHeure(dateStr: string): string {
   return new Date(dateStr).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+function formatDateCourte(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// En dessous de ce seuil, un produit est signalé "stock faible" en caisse et
+// dans la liste du stock.
+const STOCK_FAIBLE_SEUIL = 5
+
+const ONGLETS_LABELS: Record<SousOnglet, string> = {
+  tableau: 'Tableau de bord',
+  caisse: 'Caisse',
+  stock: 'Stock',
+  ardoises: 'Ardoises',
+  'mon-ardoise': 'Mon ardoise',
+}
+
 async function fetchMembresOptions(): Promise<MembreOption[]> {
   const { data } = await supabase.from('membres').select('id, prenom, nom').order('nom')
   return data || []
@@ -91,7 +101,7 @@ async function fetchMembresOptions(): Promise<MembreOption[]> {
 
 // --- Tableau de bord ----------------------------------------------------------
 
-function TableauDeBordPanel() {
+function TableauDeBordPanel({ onNavigate }: { onNavigate: (onglet: SousOnglet) => void }) {
   const [loading, setLoading] = useState(true)
   const [consommations, setConsommations] = useState<BarConsommation[]>([])
   const [produits, setProduits] = useState<BarProduit[]>([])
@@ -126,6 +136,8 @@ function TableauDeBordPanel() {
       .slice(0, 5)
   }, [consommations, produits])
 
+  const ardoisesEnCours = useMemo(() => soldes.filter((s) => s.solde !== 0).length, [soldes])
+
   const plusGrossesArdoises = useMemo(() => {
     return soldes
       .filter((s) => s.solde < 0)
@@ -138,18 +150,57 @@ function TableauDeBordPanel() {
 
   return (
     <div className="space-y-xl">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-md">
-        <div className="border border-brand-hairline p-md text-center">
-          <p className="font-display font-bold text-2xl text-brand-petrol">{formatMontant(ca)}</p>
-          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Chiffre d'affaires total</p>
+      <div className="grid grid-cols-3 gap-md">
+        <button onClick={() => onNavigate('stock')} className="border border-brand-hairline bg-brand-paper p-md text-center hover:border-brand-petrol transition-colors">
+          <p className="text-2xl mb-xxs">📦</p>
+          <p className="font-display font-bold text-2xl text-brand-ink">{produits.length}</p>
+          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Produits en stock</p>
+        </button>
+        <button onClick={() => onNavigate('ardoises')} className="border-2 border-brand-brick bg-brand-brick text-brand-parchment p-md text-center hover:opacity-90 transition-opacity">
+          <p className="text-2xl mb-xxs">🧾</p>
+          <p className="font-display font-bold text-2xl">{ardoisesEnCours}</p>
+          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-parchment/70">Ardoises en cours</p>
+        </button>
+        <div className="border border-brand-hairline bg-brand-paper p-md text-center">
+          <p className="text-2xl mb-xxs">💳</p>
+          <p className="font-display font-bold text-2xl text-brand-ink">{formatMontant(ca)}</p>
+          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Encaissé au total</p>
         </div>
-        <div className="border border-brand-hairline p-md text-center">
-          <p className="font-display font-bold text-2xl text-brand-petrol">{consommations.length}</p>
-          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Ventes enregistrées</p>
-        </div>
-        <div className="border border-brand-hairline p-md text-center">
-          <p className="font-display font-bold text-2xl text-brand-petrol">{plusGrossesArdoises.length}</p>
-          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Ardoises en cours</p>
+      </div>
+
+      {plusGrossesArdoises.length > 0 && (
+        <button
+          onClick={() => onNavigate('ardoises')}
+          className="w-full flex items-center gap-md bg-brand-brick text-brand-parchment px-md py-md text-left hover:opacity-90 transition-opacity"
+        >
+          <span className="text-xl">⚠️</span>
+          <span>
+            <span className="block font-display font-bold uppercase">{plusGrossesArdoises.length} ardoise{plusGrossesArdoises.length > 1 ? 's' : ''} à relancer</span>
+            <span className="block text-xs text-brand-parchment/70">Des soldes sont en attente de règlement.</span>
+          </span>
+          <span className="ml-auto">→</span>
+        </button>
+      )}
+
+      <div>
+        <p className="eyebrow mb-sm">Accès rapide</p>
+        <div className="grid grid-cols-2 gap-md">
+          <button onClick={() => onNavigate('caisse')} className="border border-brand-hairline bg-brand-paper p-md flex items-center gap-sm hover:border-brand-petrol transition-colors">
+            <span className="text-xl">🛒</span>
+            <span className="font-display font-bold uppercase text-sm text-left">Vendre en caisse</span>
+          </button>
+          <button onClick={() => onNavigate('stock')} className="border border-brand-hairline bg-brand-paper p-md flex items-center gap-sm hover:border-brand-petrol transition-colors">
+            <span className="text-xl">📦</span>
+            <span className="font-display font-bold uppercase text-sm text-left">Gérer le stock</span>
+          </button>
+          <button onClick={() => onNavigate('ardoises')} className="border border-brand-hairline bg-brand-paper p-md flex items-center gap-sm hover:border-brand-petrol transition-colors">
+            <span className="text-xl">📋</span>
+            <span className="font-display font-bold uppercase text-sm text-left">Voir les ardoises</span>
+          </button>
+          <button onClick={() => onNavigate('mon-ardoise')} className="border border-brand-hairline bg-brand-paper p-md flex items-center gap-sm hover:border-brand-petrol transition-colors">
+            <span className="text-xl">🙋</span>
+            <span className="font-display font-bold uppercase text-sm text-left">Mon ardoise</span>
+          </button>
         </div>
       </div>
 
@@ -328,6 +379,7 @@ function CaissePanel({ barman }: { barman: Membre }) {
                 <p className="text-2xl">{produit.icone}</p>
                 <p className="font-display font-bold uppercase text-sm">{produit.titre}</p>
                 <p className="text-xs text-brand-ink/50">{formatMontant(produit.prix)} · stock {produit.stock}</p>
+                {produit.stock <= STOCK_FAIBLE_SEUIL && <p className="text-[10px] text-brand-brick font-semibold">⚠ Stock faible</p>}
                 <div className="flex items-center justify-center gap-xs">
                   <button onClick={() => setQte(produit.id, qte(produit.id) - 1)} className="w-6 h-6 border border-brand-hairline">−</button>
                   <span className="w-6 text-center">{qte(produit.id)}</span>
@@ -355,6 +407,8 @@ function CaissePanel({ barman }: { barman: Membre }) {
 function StockPanel() {
   const [produits, setProduits] = useState<BarProduit[]>([])
   const [loading, setLoading] = useState(true)
+  const [recherche, setRecherche] = useState('')
+  const [ajoutOuvert, setAjoutOuvert] = useState(false)
 
   const fetchProduits = async () => {
     const { data } = await supabase.from('bar_produits').select('*').order('categorie').order('titre')
@@ -364,27 +418,49 @@ function StockPanel() {
 
   useEffect(() => { fetchProduits() }, [])
 
+  const produitsFiltres = useMemo(() => {
+    const q = recherche.trim().toLowerCase()
+    if (!q) return produits
+    return produits.filter((p) => p.titre.toLowerCase().includes(q) || p.categorie.toLowerCase().includes(q))
+  }, [produits, recherche])
+
   if (loading) return <p className="eyebrow">Chargement…</p>
 
   return (
     <div className="space-y-md">
-      {produits.map((produit) => (
-        <ProduitCard key={produit.id} produit={produit} onSaved={fetchProduits} />
-      ))}
-      {!produits.length && <p className="text-sm text-brand-ink/50">Aucun produit pour le moment.</p>}
-      <NouveauProduitForm onSaved={fetchProduits} />
+      <button onClick={() => setAjoutOuvert((v) => !v)} className="btn-primary text-xs w-full py-md">
+        {ajoutOuvert ? '✕ Fermer' : '+ Ajouter un produit'}
+      </button>
+      {ajoutOuvert && <NouveauProduitForm onSaved={() => { fetchProduits(); setAjoutOuvert(false) }} />}
+
+      <input
+        value={recherche}
+        onChange={(e) => setRecherche(e.target.value)}
+        placeholder="🔎 Rechercher un produit…"
+        className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
+      />
+
+      <div className="border border-brand-hairline divide-y divide-brand-hairline">
+        {produitsFiltres.map((produit) => (
+          <ProduitLigne key={produit.id} produit={produit} onSaved={fetchProduits} />
+        ))}
+        {!produitsFiltres.length && <p className="text-sm text-brand-ink/50 p-md">Aucun produit trouvé.</p>}
+      </div>
     </div>
   )
 }
 
-function ProduitCard({ produit, onSaved }: { produit: BarProduit; onSaved: () => void }) {
+function ProduitLigne({ produit, onSaved }: { produit: BarProduit; onSaved: () => void }) {
   const [editing, setEditing] = useState(false)
   const [titre, setTitre] = useState(produit.titre)
   const [icone, setIcone] = useState(produit.icone)
   const [categorie, setCategorie] = useState(produit.categorie)
   const [prix, setPrix] = useState(String(produit.prix))
-  const [ajoutStock, setAjoutStock] = useState('')
+  const [mouvement, setMouvement] = useState<'entree' | 'sortie' | null>(null)
+  const [quantiteMouvement, setQuantiteMouvement] = useState('1')
   const [saving, setSaving] = useState(false)
+
+  const stockFaible = produit.stock <= STOCK_FAIBLE_SEUIL
 
   const save = async () => {
     setSaving(true)
@@ -402,11 +478,13 @@ function ProduitCard({ produit, onSaved }: { produit: BarProduit; onSaved: () =>
     onSaved()
   }
 
-  const reapprovisionner = async () => {
-    const quantite = Number(ajoutStock)
-    if (!quantite) return
-    await supabase.from('bar_produits').update({ stock: produit.stock + quantite }).eq('id', produit.id)
-    setAjoutStock('')
+  const validerMouvement = async () => {
+    const quantite = Number(quantiteMouvement)
+    if (!quantite || quantite <= 0) return
+    const delta = mouvement === 'entree' ? quantite : -quantite
+    await supabase.from('bar_produits').update({ stock: produit.stock + delta }).eq('id', produit.id)
+    setMouvement(null)
+    setQuantiteMouvement('1')
     onSaved()
   }
 
@@ -424,7 +502,7 @@ function ProduitCard({ produit, onSaved }: { produit: BarProduit; onSaved: () =>
 
   if (editing) {
     return (
-      <div className="border border-brand-hairline p-md space-y-sm">
+      <div className="p-md space-y-sm bg-brand-paper">
         <div className="flex gap-sm">
           <input value={icone} onChange={(e) => setIcone(e.target.value)} maxLength={2} className="w-16 text-center border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
           <input value={titre} onChange={(e) => setTitre(e.target.value)} className="flex-1 border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
@@ -442,29 +520,47 @@ function ProduitCard({ produit, onSaved }: { produit: BarProduit; onSaved: () =>
   }
 
   return (
-    <div className={`border border-brand-hairline p-md flex flex-wrap items-center gap-md ${!produit.actif ? 'opacity-50' : ''}`}>
-      <span className="text-2xl">{produit.icone}</span>
-      <div className="flex-1 min-w-[140px]">
-        <p className="font-display font-bold uppercase">{produit.titre}</p>
-        <p className="text-xs text-brand-ink/50">{produit.categorie} · {formatMontant(produit.prix)} · stock {produit.stock}</p>
-      </div>
-      <div className="flex items-center gap-xs">
-        <input
-          value={ajoutStock}
-          onChange={(e) => setAjoutStock(e.target.value)}
-          type="number"
-          placeholder="+ stock"
-          className="w-20 border border-brand-hairline bg-brand-parchment px-sm py-xs text-xs"
-        />
-        <button onClick={reapprovisionner} className="btn-secondary text-xs px-sm py-xs">Ajouter</button>
-      </div>
-      <div className="flex gap-md whitespace-nowrap">
-        <button onClick={toggleActif} className="text-xs text-brand-petrol hover:underline font-semibold">
+    <div className={`p-md ${!produit.actif ? 'opacity-50' : ''} ${stockFaible ? 'bg-brand-brick/5' : ''}`}>
+      <div className="flex flex-wrap items-center gap-md">
+        <span className="text-2xl">{produit.icone}</span>
+        <div className="flex-1 min-w-[140px]">
+          <button onClick={() => setEditing(true)} className="font-display font-bold uppercase hover:text-brand-petrol">{produit.titre}</button>
+          <p className="text-xs text-brand-ink/50">{produit.categorie} · {formatMontant(produit.prix)}</p>
+        </div>
+        <span className={`tag whitespace-nowrap ${stockFaible ? 'bg-brand-brick/15 text-brand-brick' : 'bg-brand-hairline text-brand-ink/70'}`}>
+          {produit.stock}
+        </span>
+        <div className="flex gap-xs">
+          <button onClick={() => setMouvement(mouvement === 'entree' ? null : 'entree')} className="px-sm py-xs text-xs uppercase tracking-[0.1em] font-semibold bg-brand-petrol text-brand-parchment">
+            Entrée
+          </button>
+          <button onClick={() => setMouvement(mouvement === 'sortie' ? null : 'sortie')} className="px-sm py-xs text-xs uppercase tracking-[0.1em] font-semibold bg-brand-brick text-brand-parchment">
+            Sortie
+          </button>
+        </div>
+        <button onClick={toggleActif} className="text-xs text-brand-petrol hover:underline font-semibold whitespace-nowrap">
           {produit.actif ? 'Désactiver' : 'Réactiver'}
         </button>
-        <button onClick={() => setEditing(true)} className="text-xs text-brand-petrol hover:underline font-semibold">Modifier</button>
-        <button onClick={supprimer} className="text-xs text-brand-brick hover:underline font-semibold">Supprimer</button>
+        <button onClick={supprimer} className="text-xs text-brand-brick hover:underline font-semibold whitespace-nowrap">Supprimer</button>
       </div>
+      {stockFaible && (
+        <p className="text-xs text-brand-brick font-semibold mt-xs">⚠ Stock faible</p>
+      )}
+      {mouvement && (
+        <div className="flex items-center gap-sm mt-sm">
+          <input
+            value={quantiteMouvement}
+            onChange={(e) => setQuantiteMouvement(e.target.value)}
+            type="number"
+            min="1"
+            autoFocus
+            className="w-24 border border-brand-hairline bg-brand-parchment px-sm py-xs text-sm"
+          />
+          <button onClick={validerMouvement} className="btn-primary text-xs px-md py-xs">
+            {mouvement === 'entree' ? '+ Ajouter au stock' : '− Retirer du stock'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -516,6 +612,7 @@ function ArdoisesPanel({ barman }: { barman: Membre }) {
   const [soldes, setSoldes] = useState<BarSolde[]>([])
   const [membresOptions, setMembresOptions] = useState<MembreOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [recherche, setRecherche] = useState('')
   const [membreOuvert, setMembreOuvert] = useState<MembreOption | null>(null)
 
   const fetchAll = async () => {
@@ -531,35 +628,144 @@ function ArdoisesPanel({ barman }: { barman: Membre }) {
   useEffect(() => { fetchAll() }, [])
 
   const lignes = useMemo(() => {
+    const q = recherche.trim().toLowerCase()
     return membresOptions
       .map((m) => ({ membre: m, solde: soldes.find((s) => s.membre_id === m.id)?.solde ?? 0 }))
       .filter((l) => l.solde !== 0)
+      .filter((l) => !q || `${l.membre.prenom} ${l.membre.nom}`.toLowerCase().includes(q))
       .sort((a, b) => a.solde - b.solde)
-  }, [membresOptions, soldes])
+  }, [membresOptions, soldes, recherche])
+
+  if (loading) return <p className="eyebrow">Chargement…</p>
+
+  if (membreOuvert) {
+    return (
+      <MembreArdoiseDetail
+        membre={membreOuvert}
+        barman={barman}
+        onRetour={() => setMembreOuvert(null)}
+        onSaved={fetchAll}
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-md">
+      <input
+        value={recherche}
+        onChange={(e) => setRecherche(e.target.value)}
+        placeholder="🔎 Rechercher un membre…"
+        className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
+      />
+      <div className="border border-brand-hairline divide-y divide-brand-hairline">
+        {lignes.map(({ membre, solde }) => (
+          <button
+            key={membre.id}
+            onClick={() => setMembreOuvert(membre)}
+            className="w-full flex items-center justify-between p-md hover:bg-brand-paper text-left"
+          >
+            <span className="font-medium">{membre.prenom} {membre.nom}</span>
+            <div className="flex items-center gap-md">
+              <SoldeBadge solde={solde} />
+              <span className="text-brand-ink/30">→</span>
+            </div>
+          </button>
+        ))}
+        {!lignes.length && <p className="text-sm text-brand-ink/50 p-md">Aucune ardoise en cours — tous les soldes sont à zéro.</p>}
+      </div>
+    </div>
+  )
+}
+
+function MembreArdoiseDetail({ membre, barman, onRetour, onSaved }: { membre: MembreOption; barman: Membre; onRetour: () => void; onSaved: () => void }) {
+  const [solde, setSolde] = useState(0)
+  const [historique, setHistorique] = useState<LigneHistorique[]>([])
+  const [loading, setLoading] = useState(true)
+  const [reglementOuvert, setReglementOuvert] = useState(false)
+
+  const fetchDetail = async () => {
+    const [{ data: soldeData }, { data: consoData }, { data: paiementsData }] = await Promise.all([
+      supabase.from('bar_soldes').select('*').eq('membre_id', membre.id).maybeSingle(),
+      supabase.from('bar_consommations').select('*, bar_produits(titre, icone)').eq('membre_id', membre.id).eq('mode_paiement', 'ardoise').order('created_at', { ascending: false }),
+      supabase.from('bar_paiements').select('*').eq('membre_id', membre.id).order('created_at', { ascending: false }),
+    ])
+    setSolde(soldeData?.solde ?? 0)
+    setHistorique(construireHistorique(consoData || [], paiementsData || []))
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchDetail()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membre.id])
+
+  const historiqueAvecSolde = useMemo(() => calculerSoldeCourant(historique), [historique])
+  const derniereActivite = historique[0]?.date
 
   if (loading) return <p className="eyebrow">Chargement…</p>
 
   return (
-    <div className="space-y-md">
-      {lignes.map(({ membre, solde }) => (
-        <div key={membre.id} className="flex items-center justify-between border border-brand-hairline p-md">
-          <span className="font-medium">{membre.prenom} {membre.nom}</span>
-          <div className="flex items-center gap-md">
-            <SoldeBadge solde={solde} />
-            <button onClick={() => setMembreOuvert(membre)} className="text-xs text-brand-petrol hover:underline font-semibold">
-              Régler
-            </button>
-          </div>
-        </div>
-      ))}
-      {!lignes.length && <p className="text-sm text-brand-ink/50">Aucune ardoise en cours — tous les soldes sont à zéro.</p>}
+    <div className="space-y-lg">
+      <button onClick={onRetour} className="text-xs text-brand-petrol hover:underline font-semibold">← Toutes les ardoises</button>
 
-      {membreOuvert && (
+      <div className="border border-brand-hairline p-md">
+        <p className="font-display font-bold uppercase text-lg mb-xs">{membre.prenom} {membre.nom}</p>
+        <div className="flex items-center justify-between flex-wrap gap-sm">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Solde actuel</p>
+            <p className={`font-display font-bold text-3xl ${solde < 0 ? 'text-brand-brick' : 'text-success'}`}>
+              {formatMontant(Math.abs(solde))}
+            </p>
+          </div>
+          {solde < 0 && <span className="tag bg-brand-brick/15 text-brand-brick">⏱ À régler</span>}
+          {solde > 0 && <span className="tag bg-success/15 text-success">Crédit disponible</span>}
+        </div>
+        {derniereActivite && (
+          <p className="text-xs text-brand-ink/50 mt-sm">Dernière activité le {formatDateCourte(derniereActivite)}</p>
+        )}
+      </div>
+
+      <div className="flex gap-sm">
+        <button onClick={() => setReglementOuvert(true)} className="btn-primary text-xs flex-1">💳 Enregistrer un paiement</button>
+      </div>
+
+      <div>
+        <p className="eyebrow mb-sm">Historique</p>
+        <div className="border border-brand-hairline overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-brand-ink text-brand-parchment">
+                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Date</th>
+                <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Description</th>
+                <th className="text-right py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Montant</th>
+                <th className="text-right py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Solde</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historiqueAvecSolde.map((ligne) => (
+                <tr key={ligne.id} className="border-t border-brand-hairline">
+                  <td className="py-sm px-md whitespace-nowrap">{formatDateCourte(ligne.date)}</td>
+                  <td className="py-sm px-md">{ligne.libelle}</td>
+                  <td className={`py-sm px-md text-right whitespace-nowrap ${ligne.montant >= 0 ? 'text-success' : 'text-brand-brick'}`}>
+                    {ligne.montant >= 0 ? '+' : ''}{formatMontant(ligne.montant)}
+                  </td>
+                  <td className="py-sm px-md text-right font-semibold whitespace-nowrap">{formatMontant(ligne.soldeApres!)}</td>
+                </tr>
+              ))}
+              {!historiqueAvecSolde.length && (
+                <tr><td colSpan={4} className="py-md px-md text-center text-brand-ink/50">Aucun mouvement pour le moment.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {reglementOuvert && (
         <ReglementEditor
-          membre={membreOuvert}
+          membre={membre}
           barman={barman}
-          onClose={() => setMembreOuvert(null)}
-          onSaved={() => { fetchAll(); setMembreOuvert(null) }}
+          onClose={() => setReglementOuvert(false)}
+          onSaved={() => { fetchDetail(); onSaved(); setReglementOuvert(false) }}
         />
       )}
     </div>
@@ -641,6 +847,40 @@ type LigneHistorique = {
   date: string
   libelle: string
   montant: number // positif = crédit (paiement), négatif = débit (conso ardoise)
+  soldeApres?: number
+}
+
+// Assemble consommations à l'ardoise + règlements d'un membre en une seule
+// chronologie, du plus récent au plus ancien (ordre d'affichage naturel).
+function construireHistorique(
+  consommations: (BarConsommation & { bar_produits?: { titre: string; icone: string } })[],
+  paiements: BarPaiement[]
+): LigneHistorique[] {
+  const lignesConso: LigneHistorique[] = consommations.map((c) => ({
+    id: c.id,
+    date: c.created_at,
+    libelle: `${c.bar_produits?.icone ?? ''} ${c.bar_produits?.titre ?? 'Produit'} × ${c.quantite}`.trim(),
+    montant: -Number(c.montant_total),
+  }))
+  const lignesPaiement: LigneHistorique[] = paiements.map((p) => ({
+    id: p.id,
+    date: p.created_at,
+    libelle: `Règlement (${p.mode === 'cb' ? 'CB' : 'espèces'})`,
+    montant: Number(p.montant),
+  }))
+  return [...lignesConso, ...lignesPaiement].sort((a, b) => b.date.localeCompare(a.date))
+}
+
+// L'historique est trié du plus récent au plus ancien ; on rejoue les lignes
+// dans l'autre sens pour calculer le solde progressif, puis on remet dans
+// l'ordre d'affichage (plus récent en premier).
+function calculerSoldeCourant(historique: LigneHistorique[]): LigneHistorique[] {
+  let solde = 0
+  const chronologique = [...historique].reverse().map((ligne) => {
+    solde += ligne.montant
+    return { ...ligne, soldeApres: solde }
+  })
+  return chronologique.reverse()
 }
 
 function MonArdoisePanel({ membre }: { membre: Membre }) {
@@ -661,21 +901,7 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
 
     setProduits(produitsData || [])
     setSolde(soldeData?.solde ?? 0)
-
-    const lignesConso: LigneHistorique[] = (consoData || []).map((c: BarConsommation & { bar_produits?: { titre: string; icone: string } }) => ({
-      id: c.id,
-      date: c.created_at,
-      libelle: `${c.bar_produits?.icone ?? ''} ${c.bar_produits?.titre ?? 'Produit'} × ${c.quantite}`.trim(),
-      montant: -Number(c.montant_total),
-    }))
-    const lignesPaiement: LigneHistorique[] = (paiementsData || []).map((p: BarPaiement) => ({
-      id: p.id,
-      date: p.created_at,
-      libelle: `Règlement (${p.mode === 'cb' ? 'CB' : 'espèces'})`,
-      montant: Number(p.montant),
-    }))
-
-    setHistorique([...lignesConso, ...lignesPaiement].sort((a, b) => b.date.localeCompare(a.date)))
+    setHistorique(construireHistorique(consoData || [], paiementsData || []))
     setLoading(false)
   }
 
@@ -749,15 +975,18 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
       <div>
         <p className="eyebrow mb-sm">Historique</p>
         <div className="space-y-xs">
-          {historique.map((ligne) => (
+          {calculerSoldeCourant(historique).map((ligne) => (
             <div key={ligne.id} className="flex items-center justify-between border border-brand-hairline px-md py-sm text-sm">
               <div>
                 <p>{ligne.libelle}</p>
                 <p className="text-xs text-brand-ink/50">{formatDateHeure(ligne.date)}</p>
               </div>
-              <span className={ligne.montant >= 0 ? 'text-success font-semibold' : 'text-brand-brick font-semibold'}>
-                {ligne.montant >= 0 ? '+' : ''}{formatMontant(ligne.montant)}
-              </span>
+              <div className="text-right">
+                <p className={ligne.montant >= 0 ? 'text-success font-semibold' : 'text-brand-brick font-semibold'}>
+                  {ligne.montant >= 0 ? '+' : ''}{formatMontant(ligne.montant)}
+                </p>
+                <p className="text-xs text-brand-ink/50">solde {formatMontant(ligne.soldeApres!)}</p>
+              </div>
             </div>
           ))}
           {!historique.length && <p className="text-sm text-brand-ink/50">Aucun mouvement pour le moment.</p>}
