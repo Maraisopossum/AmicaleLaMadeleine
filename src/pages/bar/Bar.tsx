@@ -89,19 +89,6 @@ async function fetchMembresOptions(): Promise<MembreOption[]> {
   return data || []
 }
 
-// Appelle l'edge function de paiement Zettle (mockée tant que les identifiants
-// développeur ne sont pas configurés, cf. supabase/functions/bar-zettle-payment).
-async function declencherPaiementZettle(target: 'consommation' | 'paiement', id: string, montant: number) {
-  const { data, error } = await supabase.functions.invoke('bar-zettle-payment', {
-    body: { target, id, montant },
-  })
-  if (error) {
-    window.alert(`Erreur paiement CB : ${error.message}`)
-    return null
-  }
-  return data as { statut: string; reference: string }
-}
-
 // --- Tableau de bord ----------------------------------------------------------
 
 function TableauDeBordPanel() {
@@ -204,6 +191,7 @@ function CaissePanel({ barman }: { barman: Membre }) {
   const [invite, setInvite] = useState(false)
   const [nomLibre, setNomLibre] = useState('')
   const [mode, setMode] = useState<'ardoise' | 'cb'>('ardoise')
+  const [referenceCb, setReferenceCb] = useState('')
   const [quantites, setQuantites] = useState<Record<string, number>>({})
   const [vendingId, setVendingId] = useState<string | null>(null)
   const [dernierResultat, setDernierResultat] = useState<string | null>(null)
@@ -233,15 +221,15 @@ function CaissePanel({ barman }: { barman: Membre }) {
       window.alert('Sélectionnez un membre pour vendre à l\'ardoise.')
       return
     }
-    if (invite && !nomLibre.trim() && mode === 'cb' && !membreId) {
-      // Vente CB totalement anonyme autorisée : rien à valider de plus.
+    if (mode === 'cb' && !window.confirm('Le paiement a bien été validé sur le lecteur Zettle physique ?')) {
+      return
     }
 
     const quantite = qte(produit.id)
     const montant_total = Number((produit.prix * quantite).toFixed(2))
     setVendingId(produit.id)
 
-    const { data: inserted, error } = await supabase
+    const { error } = await supabase
       .from('bar_consommations')
       .insert({
         produit_id: produit.id,
@@ -251,11 +239,10 @@ function CaissePanel({ barman }: { barman: Membre }) {
         prix_unitaire: produit.prix,
         montant_total,
         mode_paiement: mode,
-        zettle_statut: mode === 'cb' ? 'en_attente' : 'non_applicable',
+        zettle_statut: mode === 'cb' ? 'reussi' : 'non_applicable',
+        zettle_reference: mode === 'cb' && referenceCb.trim() ? referenceCb.trim() : null,
         enregistre_par: barman.id,
       })
-      .select()
-      .single()
 
     if (error) {
       window.alert(`Erreur : ${error.message}`)
@@ -266,13 +253,8 @@ function CaissePanel({ barman }: { barman: Membre }) {
     await supabase.from('bar_produits').update({ stock: produit.stock - quantite }).eq('id', produit.id)
     setProduits((prev) => prev.map((p) => (p.id === produit.id ? { ...p, stock: p.stock - quantite } : p)))
 
-    if (mode === 'cb' && inserted) {
-      const resultat = await declencherPaiementZettle('consommation', inserted.id, montant_total)
-      setDernierResultat(resultat ? `${produit.titre} × ${quantite} — CB ${resultat.statut} (${resultat.reference})` : null)
-    } else {
-      setDernierResultat(`${produit.titre} × ${quantite} — ajouté à l'ardoise`)
-    }
-
+    setDernierResultat(mode === 'cb' ? `${produit.titre} × ${quantite} — payé par CB` : `${produit.titre} × ${quantite} — ajouté à l'ardoise`)
+    setReferenceCb('')
     setQuantites((prev) => ({ ...prev, [produit.id]: 1 }))
     setVendingId(null)
   }
@@ -319,9 +301,17 @@ function CaissePanel({ barman }: { barman: Membre }) {
               onClick={() => setMode('cb')}
               className={`flex-1 px-md py-sm text-xs uppercase tracking-[0.1em] font-semibold border ${mode === 'cb' ? 'bg-brand-petrol text-brand-parchment border-brand-petrol' : 'border-brand-hairline'}`}
             >
-              CB (Zettle)
+              CB
             </button>
           </div>
+          {mode === 'cb' && (
+            <input
+              value={referenceCb}
+              onChange={(e) => setReferenceCb(e.target.value)}
+              placeholder="Référence du reçu (optionnel)"
+              className="w-full mt-sm border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
+            />
+          )}
         </div>
       </div>
 
@@ -579,26 +569,29 @@ function ArdoisesPanel({ barman }: { barman: Membre }) {
 function ReglementEditor({ membre, barman, onClose, onSaved }: { membre: MembreOption; barman: Membre; onClose: () => void; onSaved: () => void }) {
   const [montant, setMontant] = useState('')
   const [mode, setMode] = useState<'cb' | 'especes'>('especes')
+  const [referenceCb, setReferenceCb] = useState('')
   const [saving, setSaving] = useState(false)
 
   const enregistrer = async () => {
     const valeur = Number(montant)
     if (!valeur || valeur <= 0) return
+    if (mode === 'cb' && !window.confirm('Le paiement a bien été validé sur le lecteur Zettle physique ?')) return
     setSaving(true)
-    const { data: inserted, error } = await supabase
+    const { error } = await supabase
       .from('bar_paiements')
-      .insert({ membre_id: membre.id, montant: valeur, mode, zettle_statut: mode === 'cb' ? 'en_attente' : 'non_applicable', enregistre_par: barman.id })
-      .select()
-      .single()
+      .insert({
+        membre_id: membre.id,
+        montant: valeur,
+        mode,
+        zettle_statut: mode === 'cb' ? 'reussi' : 'non_applicable',
+        zettle_reference: mode === 'cb' && referenceCb.trim() ? referenceCb.trim() : null,
+        enregistre_par: barman.id,
+      })
 
     if (error) {
       window.alert(`Erreur : ${error.message}`)
       setSaving(false)
       return
-    }
-
-    if (mode === 'cb' && inserted) {
-      await declencherPaiementZettle('paiement', inserted.id, valeur)
     }
 
     setSaving(false)
@@ -621,8 +614,16 @@ function ReglementEditor({ membre, barman, onClose, onSaved }: { membre: MembreO
           />
           <div className="flex gap-sm">
             <button onClick={() => setMode('especes')} className={`flex-1 px-md py-sm text-xs uppercase tracking-[0.1em] font-semibold border ${mode === 'especes' ? 'bg-brand-petrol text-brand-parchment border-brand-petrol' : 'border-brand-hairline'}`}>Espèces</button>
-            <button onClick={() => setMode('cb')} className={`flex-1 px-md py-sm text-xs uppercase tracking-[0.1em] font-semibold border ${mode === 'cb' ? 'bg-brand-petrol text-brand-parchment border-brand-petrol' : 'border-brand-hairline'}`}>CB (Zettle)</button>
+            <button onClick={() => setMode('cb')} className={`flex-1 px-md py-sm text-xs uppercase tracking-[0.1em] font-semibold border ${mode === 'cb' ? 'bg-brand-petrol text-brand-parchment border-brand-petrol' : 'border-brand-hairline'}`}>CB</button>
           </div>
+          {mode === 'cb' && (
+            <input
+              value={referenceCb}
+              onChange={(e) => setReferenceCb(e.target.value)}
+              placeholder="Référence du reçu (optionnel)"
+              className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
+            />
+          )}
         </div>
         <div className="flex gap-sm">
           <button onClick={enregistrer} disabled={saving} className="btn-primary text-xs flex-1">Enregistrer</button>
