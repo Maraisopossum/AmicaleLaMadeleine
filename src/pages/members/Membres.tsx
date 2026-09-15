@@ -181,6 +181,12 @@ export default function Membres() {
     fetchMembres()
   }
 
+  const handleToggleEstBarman = async (membre: Membre, est_barman: boolean) => {
+    const { error } = await supabase.from('membres').update({ est_barman }).eq('id', membre.id)
+    if (error) { window.alert(`Erreur : ${error.message}`); return }
+    fetchMembres()
+  }
+
   const handleDeleteMembre = async (membre: Membre) => {
     if (!window.confirm(`Supprimer ${membre.prenom} ${membre.nom} ? Cette action est définitive.`)) return
     const { error } = await supabase.from('membres').delete().eq('id', membre.id)
@@ -433,6 +439,9 @@ export default function Membres() {
                   <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] print:hidden">Candidatures</th>
                 )}
                 {canManageMembres && (
+                  <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.15em] print:hidden">Barman</th>
+                )}
+                {canManageMembres && (
                   <th className="text-left py-sm px-md font-semibold text-xs tracking-[0.15em] print:hidden">Accès</th>
                 )}
                 {canManageMembres && (
@@ -525,6 +534,19 @@ export default function Membres() {
                           aria-label={`Accès candidatures pour ${membre.prenom} ${membre.nom}`}
                           checked={membre.acces_candidatures}
                           onChange={(e) => handleToggleAccesCandidatures(membre, e.target.checked)}
+                          className="w-4 h-4 accent-brand-petrol"
+                        />
+                      </label>
+                    </td>
+                  )}
+                  {canManageMembres && (
+                    <td className="py-sm px-md print:hidden">
+                      <label className="flex items-center gap-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          aria-label={`Barman pour ${membre.prenom} ${membre.nom}`}
+                          checked={membre.est_barman}
+                          onChange={(e) => handleToggleEstBarman(membre, e.target.checked)}
                           className="w-4 h-4 accent-brand-petrol"
                         />
                       </label>

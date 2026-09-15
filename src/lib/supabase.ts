@@ -22,6 +22,7 @@ export type Membre = {
   doit_changer_mdp: boolean
   photo_url: string | null
   acces_candidatures: boolean
+  est_barman: boolean
   notif_reunions: boolean
   notif_idees: boolean
   notif_votes: boolean
@@ -223,6 +224,51 @@ export type ReunionPresence = {
   reunion_id: string
   membre_id: string
   statut: 'present' | 'excuse' | 'absent'
+}
+
+export type BarProduit = {
+  id: string
+  titre: string
+  icone: string
+  categorie: string
+  prix: number
+  stock: number
+  actif: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type BarZettleStatut = 'non_applicable' | 'en_attente' | 'reussi' | 'echoue'
+
+export type BarConsommation = {
+  id: string
+  produit_id: string
+  membre_id: string | null
+  nom_libre: string | null
+  quantite: number
+  prix_unitaire: number
+  montant_total: number
+  mode_paiement: 'ardoise' | 'cb'
+  zettle_statut: BarZettleStatut
+  zettle_reference: string | null
+  enregistre_par: string | null
+  created_at: string
+}
+
+export type BarPaiement = {
+  id: string
+  membre_id: string
+  montant: number
+  mode: 'cb' | 'especes'
+  zettle_statut: BarZettleStatut
+  zettle_reference: string | null
+  enregistre_par: string
+  created_at: string
+}
+
+export type BarSolde = {
+  membre_id: string
+  solde: number
 }
 
 export type Tache = {

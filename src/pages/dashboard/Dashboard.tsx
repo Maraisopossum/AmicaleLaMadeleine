@@ -153,6 +153,12 @@ export default function Dashboard() {
             <p className="text-sm text-brand-ink/70">Comptes-rendus de réunions et AG</p>
           </Link>
 
+          <Link to="/bar" className="signature-card signature-coral block">
+            <span className="absolute top-0 left-0 h-1 w-12 bg-brand-sky" />
+            <h3 className="font-display font-bold uppercase text-xl mt-sm mb-xs">Bar</h3>
+            <p className="text-sm opacity-90">Mon ardoise, stock et caisse</p>
+          </Link>
+
           {isAdmin && (
             <Link to="/taches" className="signature-card block">
               <span className="absolute top-0 left-0 h-1 w-12 bg-brand-petrol" />

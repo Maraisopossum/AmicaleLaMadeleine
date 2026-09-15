@@ -21,6 +21,7 @@ const Reunions = lazy(() => import('./pages/reunions/Reunions'))
 const ReunionDetail = lazy(() => import('./pages/reunions/ReunionDetail'))
 const Recrutement = lazy(() => import('./pages/public/Recrutement'))
 const Candidatures = lazy(() => import('./pages/candidatures/Candidatures'))
+const Bar = lazy(() => import('./pages/bar/Bar'))
 
 function Chargement() {
   return (
@@ -53,6 +54,7 @@ function App() {
           <Route path="/reunions" element={<RequireAuth><Reunions /></RequireAuth>} />
           <Route path="/reunions/:id" element={<RequireAuth><ReunionDetail /></RequireAuth>} />
           <Route path="/candidatures" element={<RequireAuth><Candidatures /></RequireAuth>} />
+          <Route path="/bar" element={<RequireAuth><Bar /></RequireAuth>} />
         </Routes>
       </Suspense>
     </AuthProvider>
