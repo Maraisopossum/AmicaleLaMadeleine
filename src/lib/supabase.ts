@@ -27,6 +27,8 @@ export type Membre = {
   notif_idees: boolean
   notif_votes: boolean
   notif_documents: boolean
+  notif_bar_stock: boolean
+  notif_bar_ardoise: boolean
   created_at: string
   updated_at: string
 }
@@ -233,6 +235,7 @@ export type BarProduit = {
   categorie: string
   prix: number
   stock: number
+  stock_minimum: number
   actif: boolean
   created_at: string
   updated_at: string
@@ -252,6 +255,10 @@ export type BarConsommation = {
   zettle_statut: BarZettleStatut
   zettle_reference: string | null
   enregistre_par: string | null
+  statut: 'validee' | 'annulee'
+  annule_par: string | null
+  annule_le: string | null
+  motif_annulation: string | null
   created_at: string
 }
 
@@ -269,6 +276,15 @@ export type BarPaiement = {
 export type BarSolde = {
   membre_id: string
   solde: number
+}
+
+export type BarConfigurationRappels = {
+  id: true
+  seuil_avertissement: number
+  seuil_urgent: number
+  frequence_jours: number
+  dernier_envoi: string | null
+  updated_at: string
 }
 
 export type Tache = {

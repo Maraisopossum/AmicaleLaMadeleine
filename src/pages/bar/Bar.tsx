@@ -8,14 +8,15 @@ import {
   BarConsommation,
   BarPaiement,
   BarSolde,
+  BarConfigurationRappels,
 } from '../../lib/supabase'
 
 type MembreOption = Pick<Membre, 'id' | 'prenom' | 'nom'>
 
-type SousOnglet = 'tableau' | 'caisse' | 'stock' | 'ardoises' | 'mon-ardoise'
+type SousOnglet = 'tableau' | 'caisse' | 'stock' | 'ardoises' | 'mon-ardoise' | 'reglages'
 
 export default function Bar() {
-  const { membre, isBarManager, loading: authLoading } = useAuth()
+  const { membre, isAdmin, isBarManager, loading: authLoading } = useAuth()
   const [sousOnglet, setSousOnglet] = useState<SousOnglet>('mon-ardoise')
 
   useEffect(() => {
@@ -26,6 +27,8 @@ export default function Bar() {
     return <p className="eyebrow p-xl">Chargement…</p>
   }
 
+  const onglets = (Object.keys(ONGLETS_LABELS) as SousOnglet[]).filter((id) => id !== 'reglages' || isAdmin)
+
   return (
     <div className="min-h-screen bg-brand-parchment font-body text-brand-ink">
       <ModuleHeader eyebrowCode="§09" eyebrowLabel="Amicale" title="Bar" />
@@ -34,7 +37,7 @@ export default function Bar() {
       <main className="max-w-6xl mx-auto p-xl">
         {isBarManager && (
           <div className="flex gap-sm mb-lg border-b border-brand-hairline overflow-x-auto">
-            {(Object.keys(ONGLETS_LABELS) as SousOnglet[]).map((id) => (
+            {onglets.map((id) => (
               <button
                 key={id}
                 onClick={() => setSousOnglet(id)}
@@ -50,9 +53,10 @@ export default function Bar() {
 
         {sousOnglet === 'tableau' && isBarManager && <TableauDeBordPanel onNavigate={setSousOnglet} />}
         {sousOnglet === 'caisse' && isBarManager && <CaissePanel barman={membre} />}
-        {sousOnglet === 'stock' && isBarManager && <StockPanel />}
+        {sousOnglet === 'stock' && isBarManager && <StockPanel isAdmin={isAdmin} />}
         {sousOnglet === 'ardoises' && isBarManager && <ArdoisesPanel barman={membre} />}
         {sousOnglet === 'mon-ardoise' && <MonArdoisePanel membre={membre} />}
+        {sousOnglet === 'reglages' && isAdmin && <ReglagesPanel />}
       </main>
     </div>
   )
@@ -82,21 +86,68 @@ function formatDateCourte(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// En dessous de ce seuil, un produit est signalé "stock faible" en caisse et
-// dans la liste du stock.
-const STOCK_FAIBLE_SEUIL = 5
-
 const ONGLETS_LABELS: Record<SousOnglet, string> = {
   tableau: 'Tableau de bord',
   caisse: 'Caisse',
   stock: 'Stock',
   ardoises: 'Ardoises',
   'mon-ardoise': 'Mon ardoise',
+  reglages: 'Réglages',
 }
 
 async function fetchMembresOptions(): Promise<MembreOption[]> {
   const { data } = await supabase.from('membres').select('id, prenom, nom').order('nom')
   return data || []
+}
+
+// Annulation tracée d'une consommation (ardoise ou CB) : la ligne reste en
+// base avec statut='annulee', qui/quand/motif, et le stock est restitué.
+async function annulerConsommation(consommationId: string, produitId: string, quantite: number, barmanId: string, motif: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('bar_consommations')
+    .update({
+      statut: 'annulee',
+      annule_par: barmanId,
+      annule_le: new Date().toISOString(),
+      motif_annulation: motif.trim() || null,
+    })
+    .eq('id', consommationId)
+
+  if (error) {
+    window.alert(`Erreur : ${error.message}`)
+    return false
+  }
+
+  const { data: produit } = await supabase.from('bar_produits').select('stock').eq('id', produitId).single()
+  if (produit) {
+    await supabase.from('bar_produits').update({ stock: produit.stock + quantite }).eq('id', produitId)
+  }
+  return true
+}
+
+function AnnulationModal({ titre, onConfirm, onClose }: { titre: string; onConfirm: (motif: string) => void; onClose: () => void }) {
+  const [motif, setMotif] = useState('')
+  return (
+    <div className="fixed inset-0 bg-brand-ink/70 flex items-center justify-center p-xl z-50" onClick={onClose}>
+      <div className="signature-card max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display font-bold uppercase mb-sm">Annuler — {titre}</h3>
+        <p className="text-sm text-brand-ink/70 mb-sm">Le stock sera restitué. L'action reste tracée (qui, quand, motif).</p>
+        <textarea
+          value={motif}
+          onChange={(e) => setMotif(e.target.value)}
+          placeholder="Motif (optionnel)"
+          rows={2}
+          className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm mb-md"
+        />
+        <div className="flex gap-sm">
+          <button onClick={() => onConfirm(motif)} className="flex-1 bg-brand-brick text-brand-parchment text-xs uppercase tracking-[0.1em] font-semibold py-sm">
+            Confirmer l'annulation
+          </button>
+          <button onClick={onClose} className="btn-secondary text-xs flex-1">Fermer</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // --- Tableau de bord ----------------------------------------------------------
@@ -111,7 +162,7 @@ function TableauDeBordPanel({ onNavigate }: { onNavigate: (onglet: SousOnglet) =
   useEffect(() => {
     (async () => {
       const [{ data: consoData }, { data: produitsData }, { data: soldesData }, membresData] = await Promise.all([
-        supabase.from('bar_consommations').select('*'),
+        supabase.from('bar_consommations').select('*').eq('statut', 'validee'),
         supabase.from('bar_produits').select('*'),
         supabase.from('bar_soldes').select('*'),
         fetchMembresOptions(),
@@ -235,6 +286,13 @@ function TableauDeBordPanel({ onNavigate }: { onNavigate: (onglet: SousOnglet) =
 
 // --- Caisse --------------------------------------------------------------------
 
+type LignePanier = { produit: BarProduit; quantite: number }
+
+type VenteRecente = BarConsommation & {
+  bar_produits?: { titre: string; icone: string }
+  membres?: { prenom: string; nom: string } | null
+}
+
 function CaissePanel({ barman }: { barman: Membre }) {
   const [produits, setProduits] = useState<BarProduit[]>([])
   const [membresOptions, setMembresOptions] = useState<MembreOption[]>([])
@@ -243,19 +301,30 @@ function CaissePanel({ barman }: { barman: Membre }) {
   const [nomLibre, setNomLibre] = useState('')
   const [mode, setMode] = useState<'ardoise' | 'cb'>('ardoise')
   const [referenceCb, setReferenceCb] = useState('')
-  const [quantites, setQuantites] = useState<Record<string, number>>({})
-  const [vendingId, setVendingId] = useState<string | null>(null)
+  const [panier, setPanier] = useState<LignePanier[]>([])
+  const [validationEnCours, setValidationEnCours] = useState(false)
   const [dernierResultat, setDernierResultat] = useState<string | null>(null)
+  const [ventesRecentes, setVentesRecentes] = useState<VenteRecente[]>([])
+  const [ligneAAnnuler, setLigneAAnnuler] = useState<VenteRecente | null>(null)
+
+  const fetchProduits = async () => {
+    const { data } = await supabase.from('bar_produits').select('*').eq('actif', true).order('categorie').order('titre')
+    setProduits(data || [])
+  }
+
+  const fetchVentesRecentes = async () => {
+    const { data } = await supabase
+      .from('bar_consommations')
+      .select('*, bar_produits(titre, icone), membres(prenom, nom)')
+      .order('created_at', { ascending: false })
+      .limit(15)
+    setVentesRecentes(data || [])
+  }
 
   useEffect(() => {
-    (async () => {
-      const [{ data: produitsData }, membresData] = await Promise.all([
-        supabase.from('bar_produits').select('*').eq('actif', true).order('categorie').order('titre'),
-        fetchMembresOptions(),
-      ])
-      setProduits(produitsData || [])
-      setMembresOptions(membresData)
-    })()
+    fetchProduits()
+    fetchMembresOptions().then(setMembresOptions)
+    fetchVentesRecentes()
   }, [])
 
   useEffect(() => {
@@ -264,50 +333,76 @@ function CaissePanel({ barman }: { barman: Membre }) {
 
   const categories = useMemo(() => [...new Set(produits.map((p) => p.categorie))], [produits])
 
-  const qte = (produitId: string) => quantites[produitId] ?? 1
-  const setQte = (produitId: string, q: number) => setQuantites((prev) => ({ ...prev, [produitId]: Math.max(1, q) }))
+  const qteDansPanier = (produitId: string) => panier.find((l) => l.produit.id === produitId)?.quantite ?? 0
+  const ajouterAuPanier = (produit: BarProduit) => {
+    setPanier((prev) => {
+      const existant = prev.find((l) => l.produit.id === produit.id)
+      if (existant) return prev.map((l) => (l.produit.id === produit.id ? { ...l, quantite: l.quantite + 1 } : l))
+      return [...prev, { produit, quantite: 1 }]
+    })
+  }
+  const changerQuantitePanier = (produitId: string, quantite: number) => {
+    if (quantite <= 0) {
+      setPanier((prev) => prev.filter((l) => l.produit.id !== produitId))
+    } else {
+      setPanier((prev) => prev.map((l) => (l.produit.id === produitId ? { ...l, quantite } : l)))
+    }
+  }
 
-  const vendre = async (produit: BarProduit) => {
+  const totalPanier = panier.reduce((sum, l) => sum + l.produit.prix * l.quantite, 0)
+
+  const validerVente = async () => {
+    if (!panier.length) return
     if (mode === 'ardoise' && !membreId) {
       window.alert('Sélectionnez un membre pour vendre à l\'ardoise.')
       return
     }
-    if (mode === 'cb' && !window.confirm('Le paiement a bien été validé sur le lecteur Zettle physique ?')) {
+    if (mode === 'cb' && !window.confirm(`Le paiement de ${formatMontant(totalPanier)} a bien été validé sur le lecteur Zettle physique ?`)) {
       return
     }
 
-    const quantite = qte(produit.id)
-    const montant_total = Number((produit.prix * quantite).toFixed(2))
-    setVendingId(produit.id)
+    setValidationEnCours(true)
 
-    const { error } = await supabase
-      .from('bar_consommations')
-      .insert({
-        produit_id: produit.id,
-        membre_id: invite ? (membreId || null) : membreId,
-        nom_libre: invite && nomLibre.trim() ? nomLibre.trim() : null,
-        quantite,
-        prix_unitaire: produit.prix,
-        montant_total,
-        mode_paiement: mode,
-        zettle_statut: mode === 'cb' ? 'reussi' : 'non_applicable',
-        zettle_reference: mode === 'cb' && referenceCb.trim() ? referenceCb.trim() : null,
-        enregistre_par: barman.id,
-      })
+    const lignes = panier.map((l) => ({
+      produit_id: l.produit.id,
+      membre_id: invite ? (membreId || null) : membreId,
+      nom_libre: invite && nomLibre.trim() ? nomLibre.trim() : null,
+      quantite: l.quantite,
+      prix_unitaire: l.produit.prix,
+      montant_total: Number((l.produit.prix * l.quantite).toFixed(2)),
+      mode_paiement: mode,
+      zettle_statut: mode === 'cb' ? 'reussi' : 'non_applicable',
+      zettle_reference: mode === 'cb' && referenceCb.trim() ? referenceCb.trim() : null,
+      enregistre_par: barman.id,
+    }))
 
+    const { error } = await supabase.from('bar_consommations').insert(lignes)
     if (error) {
       window.alert(`Erreur : ${error.message}`)
-      setVendingId(null)
+      setValidationEnCours(false)
       return
     }
 
-    await supabase.from('bar_produits').update({ stock: produit.stock - quantite }).eq('id', produit.id)
-    setProduits((prev) => prev.map((p) => (p.id === produit.id ? { ...p, stock: p.stock - quantite } : p)))
+    for (const l of panier) {
+      await supabase.from('bar_produits').update({ stock: l.produit.stock - l.quantite }).eq('id', l.produit.id)
+    }
 
-    setDernierResultat(mode === 'cb' ? `${produit.titre} × ${quantite} — payé par CB` : `${produit.titre} × ${quantite} — ajouté à l'ardoise`)
+    setDernierResultat(`Vente validée : ${panier.length} produit(s), ${formatMontant(totalPanier)} — ${mode === 'cb' ? 'payé par CB' : 'ajouté à l\'ardoise'}`)
+    setPanier([])
     setReferenceCb('')
-    setQuantites((prev) => ({ ...prev, [produit.id]: 1 }))
-    setVendingId(null)
+    await fetchProduits()
+    await fetchVentesRecentes()
+    setValidationEnCours(false)
+  }
+
+  const confirmerAnnulation = async (motif: string) => {
+    if (!ligneAAnnuler) return
+    const ok = await annulerConsommation(ligneAAnnuler.id, ligneAAnnuler.produit_id, ligneAAnnuler.quantite, barman.id, motif)
+    setLigneAAnnuler(null)
+    if (ok) {
+      await fetchProduits()
+      await fetchVentesRecentes()
+    }
   }
 
   return (
@@ -379,18 +474,9 @@ function CaissePanel({ barman }: { barman: Membre }) {
                 <p className="text-2xl">{produit.icone}</p>
                 <p className="font-display font-bold uppercase text-sm">{produit.titre}</p>
                 <p className="text-xs text-brand-ink/50">{formatMontant(produit.prix)} · stock {produit.stock}</p>
-                {produit.stock <= STOCK_FAIBLE_SEUIL && <p className="text-[10px] text-brand-brick font-semibold">⚠ Stock faible</p>}
-                <div className="flex items-center justify-center gap-xs">
-                  <button onClick={() => setQte(produit.id, qte(produit.id) - 1)} className="w-6 h-6 border border-brand-hairline">−</button>
-                  <span className="w-6 text-center">{qte(produit.id)}</span>
-                  <button onClick={() => setQte(produit.id, qte(produit.id) + 1)} className="w-6 h-6 border border-brand-hairline">+</button>
-                </div>
-                <button
-                  onClick={() => vendre(produit)}
-                  disabled={vendingId === produit.id}
-                  className="btn-primary text-xs w-full disabled:opacity-50"
-                >
-                  Vendre
+                {produit.stock <= produit.stock_minimum && <p className="text-[10px] text-brand-brick font-semibold">⚠ Stock faible</p>}
+                <button onClick={() => ajouterAuPanier(produit)} className="btn-primary text-xs w-full">
+                  + Panier{qteDansPanier(produit.id) > 0 ? ` (${qteDansPanier(produit.id)})` : ''}
                 </button>
               </div>
             ))}
@@ -398,13 +484,71 @@ function CaissePanel({ barman }: { barman: Membre }) {
         </div>
       ))}
       {!produits.length && <p className="text-sm text-brand-ink/50">Aucun produit actif — ajoutez-en dans l'onglet Stock.</p>}
+
+      {panier.length > 0 && (
+        <div className="border-2 border-brand-petrol bg-brand-paper p-md space-y-sm sticky bottom-0">
+          <p className="eyebrow">🛒 Panier</p>
+          {panier.map((l) => (
+            <div key={l.produit.id} className="flex items-center gap-md">
+              <span className="flex-1 text-sm">{l.produit.icone} {l.produit.titre}</span>
+              <div className="flex items-center gap-xs">
+                <button onClick={() => changerQuantitePanier(l.produit.id, l.quantite - 1)} className="w-6 h-6 border border-brand-hairline">−</button>
+                <span className="w-6 text-center text-sm">{l.quantite}</span>
+                <button onClick={() => changerQuantitePanier(l.produit.id, l.quantite + 1)} className="w-6 h-6 border border-brand-hairline">+</button>
+              </div>
+              <span className="text-sm font-semibold w-16 text-right">{formatMontant(l.produit.prix * l.quantite)}</span>
+              <button onClick={() => changerQuantitePanier(l.produit.id, 0)} className="text-brand-brick text-sm">✕</button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-sm border-t border-brand-hairline">
+            <span className="font-display font-bold uppercase">Total : {formatMontant(totalPanier)}</span>
+            <button onClick={validerVente} disabled={validationEnCours} className="btn-primary text-xs px-lg disabled:opacity-50">
+              Valider la vente
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="eyebrow mb-sm">Ventes récentes</p>
+        <div className="border border-brand-hairline divide-y divide-brand-hairline">
+          {ventesRecentes.map((v) => (
+            <div key={v.id} className={`flex items-center gap-md p-sm text-sm ${v.statut === 'annulee' ? 'opacity-50' : ''}`}>
+              <span className={v.statut === 'annulee' ? 'line-through' : ''}>
+                {v.bar_produits?.icone} {v.bar_produits?.titre} × {v.quantite}
+              </span>
+              <span className="text-xs text-brand-ink/50">
+                {v.membres ? `${v.membres.prenom} ${v.membres.nom}` : (v.nom_libre || 'Anonyme')}
+              </span>
+              <span className="tag bg-brand-hairline text-brand-ink/70">{v.mode_paiement === 'cb' ? 'CB' : 'Ardoise'}</span>
+              <span className="ml-auto font-semibold">{formatMontant(v.montant_total)}</span>
+              {v.statut === 'validee' ? (
+                <button onClick={() => setLigneAAnnuler(v)} className="text-xs text-brand-brick hover:underline font-semibold whitespace-nowrap">
+                  Annuler
+                </button>
+              ) : (
+                <span className="text-xs text-brand-ink/50 whitespace-nowrap">Annulée</span>
+              )}
+            </div>
+          ))}
+          {!ventesRecentes.length && <p className="text-sm text-brand-ink/50 p-md">Aucune vente pour le moment.</p>}
+        </div>
+      </div>
+
+      {ligneAAnnuler && (
+        <AnnulationModal
+          titre={`${ligneAAnnuler.bar_produits?.titre ?? 'Produit'} × ${ligneAAnnuler.quantite}`}
+          onConfirm={confirmerAnnulation}
+          onClose={() => setLigneAAnnuler(null)}
+        />
+      )}
     </div>
   )
 }
 
 // --- Stock ---------------------------------------------------------------------
 
-function StockPanel() {
+function StockPanel({ isAdmin }: { isAdmin: boolean }) {
   const [produits, setProduits] = useState<BarProduit[]>([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
@@ -442,7 +586,7 @@ function StockPanel() {
 
       <div className="border border-brand-hairline divide-y divide-brand-hairline">
         {produitsFiltres.map((produit) => (
-          <ProduitLigne key={produit.id} produit={produit} onSaved={fetchProduits} />
+          <ProduitLigne key={produit.id} produit={produit} isAdmin={isAdmin} onSaved={fetchProduits} />
         ))}
         {!produitsFiltres.length && <p className="text-sm text-brand-ink/50 p-md">Aucun produit trouvé.</p>}
       </div>
@@ -450,24 +594,24 @@ function StockPanel() {
   )
 }
 
-function ProduitLigne({ produit, onSaved }: { produit: BarProduit; onSaved: () => void }) {
+function ProduitLigne({ produit, isAdmin, onSaved }: { produit: BarProduit; isAdmin: boolean; onSaved: () => void }) {
   const [editing, setEditing] = useState(false)
   const [titre, setTitre] = useState(produit.titre)
   const [icone, setIcone] = useState(produit.icone)
   const [categorie, setCategorie] = useState(produit.categorie)
   const [prix, setPrix] = useState(String(produit.prix))
+  const [stockMinimum, setStockMinimum] = useState(String(produit.stock_minimum))
   const [mouvement, setMouvement] = useState<'entree' | 'sortie' | null>(null)
   const [quantiteMouvement, setQuantiteMouvement] = useState('1')
   const [saving, setSaving] = useState(false)
 
-  const stockFaible = produit.stock <= STOCK_FAIBLE_SEUIL
+  const stockFaible = produit.stock <= produit.stock_minimum
 
   const save = async () => {
     setSaving(true)
-    await supabase
-      .from('bar_produits')
-      .update({ titre: titre.trim(), icone: icone.trim() || '🍺', categorie: categorie.trim() || 'Divers', prix: Number(prix) || 0 })
-      .eq('id', produit.id)
+    const update: Partial<BarProduit> = { titre: titre.trim(), icone: icone.trim() || '🍺', categorie: categorie.trim() || 'Divers', prix: Number(prix) || 0 }
+    if (isAdmin) update.stock_minimum = Number(stockMinimum) || 0
+    await supabase.from('bar_produits').update(update).eq('id', produit.id)
     setSaving(false)
     setEditing(false)
     onSaved()
@@ -510,6 +654,18 @@ function ProduitLigne({ produit, onSaved }: { produit: BarProduit; onSaved: () =
         <div className="flex gap-sm">
           <input value={categorie} onChange={(e) => setCategorie(e.target.value)} placeholder="Catégorie" className="flex-1 border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
           <input value={prix} onChange={(e) => setPrix(e.target.value)} type="number" step="0.10" min="0" placeholder="Prix" className="w-28 border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Stock minimum (alerte)</label>
+          <input
+            value={stockMinimum}
+            onChange={(e) => setStockMinimum(e.target.value)}
+            type="number"
+            min="0"
+            disabled={!isAdmin}
+            className="w-28 border border-brand-hairline bg-brand-parchment px-md py-sm text-sm disabled:opacity-50"
+          />
+          {!isAdmin && <p className="text-xs text-brand-ink/50 mt-xs">Réservé au bureau.</p>}
         </div>
         <div className="flex gap-sm">
           <button onClick={save} disabled={saving} className="btn-primary text-xs flex-1">Enregistrer</button>
@@ -682,11 +838,14 @@ function MembreArdoiseDetail({ membre, barman, onRetour, onSaved }: { membre: Me
   const [historique, setHistorique] = useState<LigneHistorique[]>([])
   const [loading, setLoading] = useState(true)
   const [reglementOuvert, setReglementOuvert] = useState(false)
+  const [ligneAAnnuler, setLigneAAnnuler] = useState<LigneHistorique | null>(null)
 
   const fetchDetail = async () => {
+    // Toutes les consommations (ardoise ET CB) : une vente CB mal saisie
+    // doit aussi pouvoir être annulée depuis la fiche du membre.
     const [{ data: soldeData }, { data: consoData }, { data: paiementsData }] = await Promise.all([
       supabase.from('bar_soldes').select('*').eq('membre_id', membre.id).maybeSingle(),
-      supabase.from('bar_consommations').select('*, bar_produits(titre, icone)').eq('membre_id', membre.id).eq('mode_paiement', 'ardoise').order('created_at', { ascending: false }),
+      supabase.from('bar_consommations').select('*, bar_produits(titre, icone)').eq('membre_id', membre.id).order('created_at', { ascending: false }),
       supabase.from('bar_paiements').select('*').eq('membre_id', membre.id).order('created_at', { ascending: false }),
     ])
     setSolde(soldeData?.solde ?? 0)
@@ -701,6 +860,14 @@ function MembreArdoiseDetail({ membre, barman, onRetour, onSaved }: { membre: Me
 
   const historiqueAvecSolde = useMemo(() => calculerSoldeCourant(historique), [historique])
   const derniereActivite = historique[0]?.date
+
+  const confirmerAnnulation = async (motif: string) => {
+    if (!ligneAAnnuler || !ligneAAnnuler.produitId) return
+    await annulerConsommation(ligneAAnnuler.id, ligneAAnnuler.produitId, ligneAAnnuler.quantite ?? 0, barman.id, motif)
+    setLigneAAnnuler(null)
+    fetchDetail()
+    onSaved()
+  }
 
   if (loading) return <p className="eyebrow">Chargement…</p>
 
@@ -739,21 +906,35 @@ function MembreArdoiseDetail({ membre, barman, onRetour, onSaved }: { membre: Me
                 <th className="text-left py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Description</th>
                 <th className="text-right py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Montant</th>
                 <th className="text-right py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]">Solde</th>
+                <th className="text-right py-sm px-md font-semibold uppercase text-xs tracking-[0.1em]"></th>
               </tr>
             </thead>
             <tbody>
               {historiqueAvecSolde.map((ligne) => (
-                <tr key={ligne.id} className="border-t border-brand-hairline">
+                <tr key={ligne.id} className={`border-t border-brand-hairline ${ligne.statut === 'annulee' ? 'opacity-50' : ''}`}>
                   <td className="py-sm px-md whitespace-nowrap">{formatDateCourte(ligne.date)}</td>
-                  <td className="py-sm px-md">{ligne.libelle}</td>
+                  <td className={`py-sm px-md ${ligne.statut === 'annulee' ? 'line-through' : ''}`}>
+                    {ligne.libelle}
+                    {ligne.type === 'consommation' && ligne.modePaiement === 'cb' && (
+                      <span className="tag bg-brand-hairline text-brand-ink/70 ml-xs">CB</span>
+                    )}
+                    {ligne.statut === 'annulee' && <span className="tag bg-brand-brick/15 text-brand-brick ml-xs">Annulée</span>}
+                  </td>
                   <td className={`py-sm px-md text-right whitespace-nowrap ${ligne.montant >= 0 ? 'text-success' : 'text-brand-brick'}`}>
                     {ligne.montant >= 0 ? '+' : ''}{formatMontant(ligne.montant)}
                   </td>
                   <td className="py-sm px-md text-right font-semibold whitespace-nowrap">{formatMontant(ligne.soldeApres!)}</td>
+                  <td className="py-sm px-md text-right whitespace-nowrap">
+                    {ligne.type === 'consommation' && ligne.statut === 'validee' && (
+                      <button onClick={() => setLigneAAnnuler(ligne)} className="text-xs text-brand-brick hover:underline font-semibold">
+                        Annuler
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {!historiqueAvecSolde.length && (
-                <tr><td colSpan={4} className="py-md px-md text-center text-brand-ink/50">Aucun mouvement pour le moment.</td></tr>
+                <tr><td colSpan={5} className="py-md px-md text-center text-brand-ink/50">Aucun mouvement pour le moment.</td></tr>
               )}
             </tbody>
           </table>
@@ -766,6 +947,14 @@ function MembreArdoiseDetail({ membre, barman, onRetour, onSaved }: { membre: Me
           barman={barman}
           onClose={() => setReglementOuvert(false)}
           onSaved={() => { fetchDetail(); onSaved(); setReglementOuvert(false) }}
+        />
+      )}
+
+      {ligneAAnnuler && (
+        <AnnulationModal
+          titre={ligneAAnnuler.libelle}
+          onConfirm={confirmerAnnulation}
+          onClose={() => setLigneAAnnuler(null)}
         />
       )}
     </div>
@@ -848,10 +1037,16 @@ type LigneHistorique = {
   libelle: string
   montant: number // positif = crédit (paiement), négatif = débit (conso ardoise)
   soldeApres?: number
+  type: 'consommation' | 'paiement'
+  statut: 'validee' | 'annulee'
+  modePaiement?: 'ardoise' | 'cb'
+  produitId?: string
+  quantite?: number
 }
 
-// Assemble consommations à l'ardoise + règlements d'un membre en une seule
-// chronologie, du plus récent au plus ancien (ordre d'affichage naturel).
+// Assemble consommations (ardoise et/ou CB selon ce qui a été chargé) +
+// règlements d'un membre en une seule chronologie, du plus récent au plus
+// ancien (ordre d'affichage naturel).
 function construireHistorique(
   consommations: (BarConsommation & { bar_produits?: { titre: string; icone: string } })[],
   paiements: BarPaiement[]
@@ -861,23 +1056,33 @@ function construireHistorique(
     date: c.created_at,
     libelle: `${c.bar_produits?.icone ?? ''} ${c.bar_produits?.titre ?? 'Produit'} × ${c.quantite}`.trim(),
     montant: -Number(c.montant_total),
+    type: 'consommation',
+    statut: c.statut,
+    modePaiement: c.mode_paiement,
+    produitId: c.produit_id,
+    quantite: c.quantite,
   }))
   const lignesPaiement: LigneHistorique[] = paiements.map((p) => ({
     id: p.id,
     date: p.created_at,
     libelle: `Règlement (${p.mode === 'cb' ? 'CB' : 'espèces'})`,
     montant: Number(p.montant),
+    type: 'paiement',
+    statut: 'validee',
   }))
   return [...lignesConso, ...lignesPaiement].sort((a, b) => b.date.localeCompare(a.date))
 }
 
 // L'historique est trié du plus récent au plus ancien ; on rejoue les lignes
 // dans l'autre sens pour calculer le solde progressif, puis on remet dans
-// l'ordre d'affichage (plus récent en premier).
+// l'ordre d'affichage (plus récent en premier). Une ligne annulée, ou une
+// consommation CB (jamais à l'ardoise), ne modifie pas le solde mais reste
+// affichée pour la traçabilité.
 function calculerSoldeCourant(historique: LigneHistorique[]): LigneHistorique[] {
   let solde = 0
   const chronologique = [...historique].reverse().map((ligne) => {
-    solde += ligne.montant
+    const affecteSolde = ligne.statut === 'validee' && (ligne.type === 'paiement' || ligne.modePaiement === 'ardoise')
+    if (affecteSolde) solde += ligne.montant
     return { ...ligne, soldeApres: solde }
   })
   return chronologique.reverse()
@@ -887,9 +1092,9 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
   const [produits, setProduits] = useState<BarProduit[]>([])
   const [solde, setSolde] = useState(0)
   const [historique, setHistorique] = useState<LigneHistorique[]>([])
-  const [quantites, setQuantites] = useState<Record<string, number>>({})
+  const [panier, setPanier] = useState<LignePanier[]>([])
   const [loading, setLoading] = useState(true)
-  const [ajoutEnCours, setAjoutEnCours] = useState<string | null>(null)
+  const [validationEnCours, setValidationEnCours] = useState(false)
 
   const fetchAll = async () => {
     const [{ data: produitsData }, { data: soldeData }, { data: consoData }, { data: paiementsData }] = await Promise.all([
@@ -911,25 +1116,53 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
   }, [membre.id])
 
   const categories = useMemo(() => [...new Set(produits.map((p) => p.categorie))], [produits])
-  const qte = (produitId: string) => quantites[produitId] ?? 1
-  const setQte = (produitId: string, q: number) => setQuantites((prev) => ({ ...prev, [produitId]: Math.max(1, q) }))
 
-  const ajouterAMonArdoise = async (produit: BarProduit) => {
-    const quantite = qte(produit.id)
-    setAjoutEnCours(produit.id)
-    await supabase.from('bar_consommations').insert({
-      produit_id: produit.id,
-      membre_id: membre.id,
-      quantite,
-      prix_unitaire: produit.prix,
-      montant_total: Number((produit.prix * quantite).toFixed(2)),
-      mode_paiement: 'ardoise',
-      enregistre_par: null,
+  const qteDansPanier = (produitId: string) => panier.find((l) => l.produit.id === produitId)?.quantite ?? 0
+  const ajouterAuPanier = (produit: BarProduit) => {
+    setPanier((prev) => {
+      const existant = prev.find((l) => l.produit.id === produit.id)
+      if (existant) return prev.map((l) => (l.produit.id === produit.id ? { ...l, quantite: l.quantite + 1 } : l))
+      return [...prev, { produit, quantite: 1 }]
     })
-    await supabase.from('bar_produits').update({ stock: produit.stock - quantite }).eq('id', produit.id)
-    setQuantites((prev) => ({ ...prev, [produit.id]: 1 }))
-    setAjoutEnCours(null)
-    fetchAll()
+  }
+  const changerQuantitePanier = (produitId: string, quantite: number) => {
+    if (quantite <= 0) {
+      setPanier((prev) => prev.filter((l) => l.produit.id !== produitId))
+    } else {
+      setPanier((prev) => prev.map((l) => (l.produit.id === produitId ? { ...l, quantite } : l)))
+    }
+  }
+
+  const totalPanier = panier.reduce((sum, l) => sum + l.produit.prix * l.quantite, 0)
+
+  const validerPanier = async () => {
+    if (!panier.length) return
+    setValidationEnCours(true)
+
+    const lignes = panier.map((l) => ({
+      produit_id: l.produit.id,
+      membre_id: membre.id,
+      quantite: l.quantite,
+      prix_unitaire: l.produit.prix,
+      montant_total: Number((l.produit.prix * l.quantite).toFixed(2)),
+      mode_paiement: 'ardoise' as const,
+      enregistre_par: null,
+    }))
+
+    const { error } = await supabase.from('bar_consommations').insert(lignes)
+    if (error) {
+      window.alert(`Erreur : ${error.message}`)
+      setValidationEnCours(false)
+      return
+    }
+
+    for (const l of panier) {
+      await supabase.from('bar_produits').update({ stock: l.produit.stock - l.quantite }).eq('id', l.produit.id)
+    }
+
+    setPanier([])
+    await fetchAll()
+    setValidationEnCours(false)
   }
 
   if (loading) return <p className="eyebrow">Chargement…</p>
@@ -952,17 +1185,8 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
                   <p className="text-2xl">{produit.icone}</p>
                   <p className="font-display font-bold uppercase text-sm">{produit.titre}</p>
                   <p className="text-xs text-brand-ink/50">{formatMontant(produit.prix)}</p>
-                  <div className="flex items-center justify-center gap-xs">
-                    <button onClick={() => setQte(produit.id, qte(produit.id) - 1)} className="w-6 h-6 border border-brand-hairline">−</button>
-                    <span className="w-6 text-center">{qte(produit.id)}</span>
-                    <button onClick={() => setQte(produit.id, qte(produit.id) + 1)} className="w-6 h-6 border border-brand-hairline">+</button>
-                  </div>
-                  <button
-                    onClick={() => ajouterAMonArdoise(produit)}
-                    disabled={ajoutEnCours === produit.id}
-                    className="btn-primary text-xs w-full disabled:opacity-50"
-                  >
-                    Ajouter à mon ardoise
+                  <button onClick={() => ajouterAuPanier(produit)} className="btn-primary text-xs w-full">
+                    + Panier{qteDansPanier(produit.id) > 0 ? ` (${qteDansPanier(produit.id)})` : ''}
                   </button>
                 </div>
               ))}
@@ -972,13 +1196,40 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
         {!produits.length && <p className="text-sm text-brand-ink/50">Aucun produit disponible pour le moment.</p>}
       </div>
 
+      {panier.length > 0 && (
+        <div className="border-2 border-brand-petrol bg-brand-paper p-md space-y-sm sticky bottom-0">
+          <p className="eyebrow">🛒 Mon panier</p>
+          {panier.map((l) => (
+            <div key={l.produit.id} className="flex items-center gap-md">
+              <span className="flex-1 text-sm">{l.produit.icone} {l.produit.titre}</span>
+              <div className="flex items-center gap-xs">
+                <button onClick={() => changerQuantitePanier(l.produit.id, l.quantite - 1)} className="w-6 h-6 border border-brand-hairline">−</button>
+                <span className="w-6 text-center text-sm">{l.quantite}</span>
+                <button onClick={() => changerQuantitePanier(l.produit.id, l.quantite + 1)} className="w-6 h-6 border border-brand-hairline">+</button>
+              </div>
+              <span className="text-sm font-semibold w-16 text-right">{formatMontant(l.produit.prix * l.quantite)}</span>
+              <button onClick={() => changerQuantitePanier(l.produit.id, 0)} className="text-brand-brick text-sm">✕</button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-sm border-t border-brand-hairline">
+            <span className="font-display font-bold uppercase">Total : {formatMontant(totalPanier)}</span>
+            <button onClick={validerPanier} disabled={validationEnCours} className="btn-primary text-xs px-lg disabled:opacity-50">
+              Valider mon panier
+            </button>
+          </div>
+        </div>
+      )}
+
       <div>
         <p className="eyebrow mb-sm">Historique</p>
         <div className="space-y-xs">
           {calculerSoldeCourant(historique).map((ligne) => (
-            <div key={ligne.id} className="flex items-center justify-between border border-brand-hairline px-md py-sm text-sm">
+            <div key={ligne.id} className={`flex items-center justify-between border border-brand-hairline px-md py-sm text-sm ${ligne.statut === 'annulee' ? 'opacity-50' : ''}`}>
               <div>
-                <p>{ligne.libelle}</p>
+                <p className={ligne.statut === 'annulee' ? 'line-through' : ''}>
+                  {ligne.libelle}
+                  {ligne.statut === 'annulee' && <span className="tag bg-brand-brick/15 text-brand-brick ml-xs">Annulée</span>}
+                </p>
                 <p className="text-xs text-brand-ink/50">{formatDateHeure(ligne.date)}</p>
               </div>
               <div className="text-right">
@@ -991,6 +1242,82 @@ function MonArdoisePanel({ membre }: { membre: Membre }) {
           ))}
           {!historique.length && <p className="text-sm text-brand-ink/50">Aucun mouvement pour le moment.</p>}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Réglages (bureau uniquement) -----------------------------------------------
+
+function ReglagesPanel() {
+  const [config, setConfig] = useState<BarConfigurationRappels | null>(null)
+  const [seuilAvertissement, setSeuilAvertissement] = useState('')
+  const [seuilUrgent, setSeuilUrgent] = useState('')
+  const [frequenceJours, setFrequenceJours] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const fetchConfig = async () => {
+    const { data } = await supabase.from('bar_configuration_rappels').select('*').eq('id', true).single()
+    if (data) {
+      setConfig(data)
+      setSeuilAvertissement(String(Math.abs(data.seuil_avertissement)))
+      setSeuilUrgent(String(Math.abs(data.seuil_urgent)))
+      setFrequenceJours(String(data.frequence_jours))
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchConfig() }, [])
+
+  const enregistrer = async () => {
+    const avertissement = -Math.abs(Number(seuilAvertissement) || 0)
+    const urgent = -Math.abs(Number(seuilUrgent) || 0)
+    if (urgent > avertissement) {
+      window.alert('Le seuil urgent doit correspondre à une dette au moins aussi élevée que le seuil d\'avertissement.')
+      return
+    }
+    setSaving(true)
+    const { error } = await supabase
+      .from('bar_configuration_rappels')
+      .update({ seuil_avertissement: avertissement, seuil_urgent: urgent, frequence_jours: Number(frequenceJours) || 7 })
+      .eq('id', true)
+    setSaving(false)
+    if (error) {
+      window.alert(`Erreur : ${error.message}`)
+      return
+    }
+    fetchConfig()
+  }
+
+  if (loading) return <p className="eyebrow">Chargement…</p>
+
+  return (
+    <div className="space-y-lg max-w-md">
+      <div>
+        <p className="eyebrow mb-sm">Rappels d'ardoise</p>
+        <p className="text-sm text-brand-ink/70 mb-md">
+          Une vérification périodique notifie le membre concerné ainsi que les barmans/bureau
+          dès que son solde dépasse l'un de ces seuils.
+        </p>
+        <div className="space-y-md">
+          <div>
+            <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Seuil d'avertissement (€ dus)</label>
+            <input value={seuilAvertissement} onChange={(e) => setSeuilAvertissement(e.target.value)} type="number" min="0" step="0.5" className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Seuil urgent (€ dus)</label>
+            <input value={seuilUrgent} onChange={(e) => setSeuilUrgent(e.target.value)} type="number" min="0" step="0.5" className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-[0.1em] font-semibold mb-xs text-brand-petrol">Fréquence de vérification (jours)</label>
+            <input value={frequenceJours} onChange={(e) => setFrequenceJours(e.target.value)} type="number" min="1" className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm" />
+          </div>
+          <button onClick={enregistrer} disabled={saving} className="btn-primary text-xs">Enregistrer</button>
+        </div>
+        {config?.dernier_envoi && (
+          <p className="text-xs text-brand-ink/50 mt-md">Dernière vérification : {formatDateHeure(config.dernier_envoi)}</p>
+        )}
       </div>
     </div>
   )

@@ -217,6 +217,8 @@ const TYPES_NOTIF = [
   ['notif_idees', 'Nouvelle idée soumise (bureau)'],
   ['notif_votes', 'Nouveau vote ouvert'],
   ['notif_documents', 'Nouveau document ajouté'],
+  ['notif_bar_stock', 'Stock du bar faible (barmans)'],
+  ['notif_bar_ardoise', 'Rappel de mon ardoise du bar'],
 ] as const
 
 function SectionNotifications() {

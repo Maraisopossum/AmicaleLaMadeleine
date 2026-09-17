@@ -152,6 +152,26 @@ function calculerNotification(payload: WebhookPayload): NotificationAMi {
     }
   }
 
+  // Alerte stock bar : uniquement au moment où le stock franchit le seuil
+  // minimum vers le bas (pas à chaque UPDATE — un changement de prix ou un
+  // réapprovisionnement qui repasse au-dessus ne doit rien déclencher).
+  if (table === 'bar_produits' && type === 'UPDATE') {
+    const stockAvant = Number(old_record?.stock)
+    const stockApres = Number(record.stock)
+    const seuil = Number(record.stock_minimum)
+    const vientDeFranchir = stockApres <= seuil && !(stockAvant <= seuil)
+    if (vientDeFranchir) {
+      return {
+        titre: 'Stock bar faible',
+        corps: `${record.icone ?? ''} ${record.titre} : il ne reste que ${stockApres} en stock (seuil : ${seuil}).`.trim(),
+        url: '/bar',
+        audienceFiltre: 'notif_bar_stock',
+        parEmail: false,
+      }
+    }
+    return null
+  }
+
   return null
 }
 
@@ -176,6 +196,10 @@ Deno.serve(async (req) => {
     membresQuery = membresQuery.eq('acces_candidatures', true)
   } else if (notification.audienceFiltre === 'notif_idees_bureau') {
     membresQuery = membresQuery.eq('notif_idees', true).in('role', ROLES_BUREAU)
+  } else if (notification.audienceFiltre === 'notif_bar_stock') {
+    // Alerte stock : réservée aux membres marqués barman (pas tout le
+    // bureau, cf. décision produit — is_bar_manager() n'est pas utilisé ici).
+    membresQuery = membresQuery.eq('notif_bar_stock', true).eq('est_barman', true)
   } else {
     membresQuery = membresQuery.eq(notification.audienceFiltre, true)
   }

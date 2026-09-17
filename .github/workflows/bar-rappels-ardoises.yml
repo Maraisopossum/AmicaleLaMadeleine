@@ -1,0 +1,16 @@
+name: Rappels ardoises du bar
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  rappels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier les ardoises et notifier si besoin
+        run: |
+          curl -s -X POST \
+          "https://hdlclzjhxvzgajbdqbts.supabase.co/functions/v1/bar-rappels-ardoises" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "x-webhook-secret: ${{ secrets.BAR_CRON_SECRET }}"
