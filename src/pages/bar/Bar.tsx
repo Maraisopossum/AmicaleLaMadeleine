@@ -13,7 +13,7 @@ import {
 
 type MembreOption = Pick<Membre, 'id' | 'prenom' | 'nom'>
 
-type SousOnglet = 'tableau' | 'caisse' | 'stock' | 'ardoises' | 'mon-ardoise' | 'reglages'
+type SousOnglet = 'tableau' | 'caisse' | 'ventes' | 'stock' | 'ardoises' | 'mon-ardoise' | 'reglages'
 
 export default function Bar() {
   const { membre, isAdmin, isBarManager, loading: authLoading } = useAuth()
@@ -52,7 +52,8 @@ export default function Bar() {
         )}
 
         {sousOnglet === 'tableau' && isBarManager && <TableauDeBordPanel onNavigate={setSousOnglet} />}
-        {sousOnglet === 'caisse' && isBarManager && <CaissePanel barman={membre} />}
+        {sousOnglet === 'caisse' && isBarManager && <CaissePanel barman={membre} onNavigate={setSousOnglet} />}
+        {sousOnglet === 'ventes' && isBarManager && <VentesPanel barman={membre} />}
         {sousOnglet === 'stock' && isBarManager && <StockPanel isAdmin={isAdmin} />}
         {sousOnglet === 'ardoises' && isBarManager && <ArdoisesPanel barman={membre} />}
         {sousOnglet === 'mon-ardoise' && <MonArdoisePanel membre={membre} />}
@@ -89,6 +90,7 @@ function formatDateCourte(dateStr: string): string {
 const ONGLETS_LABELS: Record<SousOnglet, string> = {
   tableau: 'Tableau de bord',
   caisse: 'Caisse',
+  ventes: 'Ventes',
   stock: 'Stock',
   ardoises: 'Ardoises',
   'mon-ardoise': 'Mon ardoise',
@@ -293,7 +295,146 @@ type VenteRecente = BarConsommation & {
   membres?: { prenom: string; nom: string } | null
 }
 
-function CaissePanel({ barman }: { barman: Membre }) {
+function VenteLigne({ vente, onAnnuler }: { vente: VenteRecente; onAnnuler: (v: VenteRecente) => void }) {
+  const annulee = vente.statut === 'annulee'
+  return (
+    <div className={`p-sm text-sm ${annulee ? 'opacity-60' : ''}`}>
+      <div className="flex flex-wrap items-center gap-x-md gap-y-xxs">
+        <span className={annulee ? 'line-through' : ''}>
+          {vente.bar_produits?.icone} {vente.bar_produits?.titre} × {vente.quantite}
+        </span>
+        <span className="text-xs text-brand-ink/50">
+          {vente.membres ? `${vente.membres.prenom} ${vente.membres.nom}` : (vente.nom_libre || 'Anonyme')}
+        </span>
+        <span className="tag bg-brand-hairline text-brand-ink/70">{vente.mode_paiement === 'cb' ? 'CB' : 'Ardoise'}</span>
+        <span className="ml-auto font-semibold whitespace-nowrap">{formatMontant(vente.montant_total)}</span>
+        {!annulee ? (
+          <button onClick={() => onAnnuler(vente)} className="text-xs text-brand-brick hover:underline font-semibold whitespace-nowrap">
+            Annuler
+          </button>
+        ) : (
+          <span className="tag bg-brand-brick/15 text-brand-brick whitespace-nowrap">Annulée</span>
+        )}
+      </div>
+      <p className="text-xs text-brand-ink/50">
+        {formatDateHeure(vente.created_at)}
+        {annulee && vente.motif_annulation ? ` · Motif : ${vente.motif_annulation}` : ''}
+      </p>
+    </div>
+  )
+}
+
+function VentesPanel({ barman }: { barman: Membre }) {
+  const TAILLE_PAGE = 30
+  const [ventes, setVentes] = useState<VenteRecente[]>([])
+  const [loading, setLoading] = useState(true)
+  const [aPlus, setAPlus] = useState(false)
+  const [filtreMode, setFiltreMode] = useState<'tous' | 'ardoise' | 'cb'>('tous')
+  const [filtreStatut, setFiltreStatut] = useState<'tous' | 'validee' | 'annulee'>('tous')
+  const [recherche, setRecherche] = useState('')
+  const [ligneAAnnuler, setLigneAAnnuler] = useState<VenteRecente | null>(null)
+
+  const charger = async (jusqua: number) => {
+    let requete = supabase
+      .from('bar_consommations')
+      .select('*, bar_produits(titre, icone), membres(prenom, nom)')
+      .order('created_at', { ascending: false })
+      .range(0, jusqua)
+    if (filtreMode !== 'tous') requete = requete.eq('mode_paiement', filtreMode)
+    if (filtreStatut !== 'tous') requete = requete.eq('statut', filtreStatut)
+    const { data } = await requete
+    const lignes = (data || []) as VenteRecente[]
+    // On demande une ligne de plus que la page pour savoir s'il en reste.
+    setAPlus(lignes.length > jusqua)
+    setVentes(lignes.slice(0, jusqua))
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    charger(TAILLE_PAGE)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtreMode, filtreStatut])
+
+  const ventesFiltrees = useMemo(() => {
+    const q = recherche.trim().toLowerCase()
+    if (!q) return ventes
+    return ventes.filter((v) => {
+      const beneficiaire = v.membres ? `${v.membres.prenom} ${v.membres.nom}` : (v.nom_libre || '')
+      return `${v.bar_produits?.titre ?? ''} ${beneficiaire}`.toLowerCase().includes(q)
+    })
+  }, [ventes, recherche])
+
+  const totalAffiche = ventesFiltrees.filter((v) => v.statut === 'validee').reduce((sum, v) => sum + Number(v.montant_total), 0)
+
+  const confirmerAnnulation = async (motif: string) => {
+    if (!ligneAAnnuler) return
+    await annulerConsommation(ligneAAnnuler.id, ligneAAnnuler.produit_id, ligneAAnnuler.quantite, barman.id, motif)
+    setLigneAAnnuler(null)
+    charger(Math.max(ventes.length, TAILLE_PAGE))
+  }
+
+  const boutonFiltre = (actif: boolean) =>
+    `px-md py-xs text-xs uppercase tracking-[0.1em] font-semibold border ${actif ? 'bg-brand-petrol text-brand-parchment border-brand-petrol' : 'border-brand-hairline'}`
+
+  return (
+    <div className="space-y-md">
+      <input
+        value={recherche}
+        onChange={(e) => setRecherche(e.target.value)}
+        placeholder="🔎 Rechercher un produit ou un membre…"
+        className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
+      />
+      <div className="flex flex-wrap gap-md">
+        <div className="flex">
+          {(['tous', 'ardoise', 'cb'] as const).map((m) => (
+            <button key={m} onClick={() => setFiltreMode(m)} className={boutonFiltre(filtreMode === m)}>
+              {m === 'tous' ? 'Tous modes' : m === 'cb' ? 'CB' : 'Ardoise'}
+            </button>
+          ))}
+        </div>
+        <div className="flex">
+          {(['tous', 'validee', 'annulee'] as const).map((s) => (
+            <button key={s} onClick={() => setFiltreStatut(s)} className={boutonFiltre(filtreStatut === s)}>
+              {s === 'tous' ? 'Toutes' : s === 'validee' ? 'Validées' : 'Annulées'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="eyebrow">Chargement…</p>
+      ) : (
+        <>
+          <p className="text-xs text-brand-ink/50">
+            {ventesFiltrees.length} vente{ventesFiltrees.length > 1 ? 's' : ''} affichée{ventesFiltrees.length > 1 ? 's' : ''} · {formatMontant(totalAffiche)} validés
+          </p>
+          <div className="border border-brand-hairline divide-y divide-brand-hairline">
+            {ventesFiltrees.map((v) => (
+              <VenteLigne key={v.id} vente={v} onAnnuler={setLigneAAnnuler} />
+            ))}
+            {!ventesFiltrees.length && <p className="text-sm text-brand-ink/50 p-md">Aucune vente ne correspond.</p>}
+          </div>
+          {aPlus && (
+            <button onClick={() => charger(ventes.length + TAILLE_PAGE)} className="btn-secondary text-xs w-full">
+              Voir plus
+            </button>
+          )}
+        </>
+      )}
+
+      {ligneAAnnuler && (
+        <AnnulationModal
+          titre={`${ligneAAnnuler.bar_produits?.titre ?? 'Produit'} × ${ligneAAnnuler.quantite}`}
+          onConfirm={confirmerAnnulation}
+          onClose={() => setLigneAAnnuler(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function CaissePanel({ barman, onNavigate }: { barman: Membre; onNavigate: (onglet: SousOnglet) => void }) {
   const [produits, setProduits] = useState<BarProduit[]>([])
   const [membresOptions, setMembresOptions] = useState<MembreOption[]>([])
   const [membreId, setMembreId] = useState('')
@@ -513,26 +654,13 @@ function CaissePanel({ barman }: { barman: Membre }) {
         <p className="eyebrow mb-sm">Ventes récentes</p>
         <div className="border border-brand-hairline divide-y divide-brand-hairline">
           {ventesRecentes.map((v) => (
-            <div key={v.id} className={`flex items-center gap-md p-sm text-sm ${v.statut === 'annulee' ? 'opacity-50' : ''}`}>
-              <span className={v.statut === 'annulee' ? 'line-through' : ''}>
-                {v.bar_produits?.icone} {v.bar_produits?.titre} × {v.quantite}
-              </span>
-              <span className="text-xs text-brand-ink/50">
-                {v.membres ? `${v.membres.prenom} ${v.membres.nom}` : (v.nom_libre || 'Anonyme')}
-              </span>
-              <span className="tag bg-brand-hairline text-brand-ink/70">{v.mode_paiement === 'cb' ? 'CB' : 'Ardoise'}</span>
-              <span className="ml-auto font-semibold">{formatMontant(v.montant_total)}</span>
-              {v.statut === 'validee' ? (
-                <button onClick={() => setLigneAAnnuler(v)} className="text-xs text-brand-brick hover:underline font-semibold whitespace-nowrap">
-                  Annuler
-                </button>
-              ) : (
-                <span className="text-xs text-brand-ink/50 whitespace-nowrap">Annulée</span>
-              )}
-            </div>
+            <VenteLigne key={v.id} vente={v} onAnnuler={setLigneAAnnuler} />
           ))}
           {!ventesRecentes.length && <p className="text-sm text-brand-ink/50 p-md">Aucune vente pour le moment.</p>}
         </div>
+        <button onClick={() => onNavigate('ventes')} className="text-xs text-brand-petrol hover:underline font-semibold mt-sm">
+          Voir tout l'historique des ventes →
+        </button>
       </div>
 
       {ligneAAnnuler && (
