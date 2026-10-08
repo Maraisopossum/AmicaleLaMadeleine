@@ -328,6 +328,7 @@ function VentesPanel({ barman }: { barman: Membre }) {
   const TAILLE_PAGE = 30
   const [ventes, setVentes] = useState<VenteRecente[]>([])
   const [loading, setLoading] = useState(true)
+  const [erreur, setErreur] = useState<string | null>(null)
   const [aPlus, setAPlus] = useState(false)
   const [filtreMode, setFiltreMode] = useState<'tous' | 'ardoise' | 'cb'>('tous')
   const [filtreStatut, setFiltreStatut] = useState<'tous' | 'validee' | 'annulee'>('tous')
@@ -337,12 +338,13 @@ function VentesPanel({ barman }: { barman: Membre }) {
   const charger = async (jusqua: number) => {
     let requete = supabase
       .from('bar_consommations')
-      .select('*, bar_produits(titre, icone), membres(prenom, nom)')
+      .select('*, bar_produits(titre, icone), membres!bar_consommations_membre_id_fkey(prenom, nom)')
       .order('created_at', { ascending: false })
       .range(0, jusqua)
     if (filtreMode !== 'tous') requete = requete.eq('mode_paiement', filtreMode)
     if (filtreStatut !== 'tous') requete = requete.eq('statut', filtreStatut)
-    const { data } = await requete
+    const { data, error } = await requete
+    setErreur(error ? error.message : null)
     const lignes = (data || []) as VenteRecente[]
     // On demande une ligne de plus que la page pour savoir s'il en reste.
     setAPlus(lignes.length > jusqua)
@@ -402,6 +404,8 @@ function VentesPanel({ barman }: { barman: Membre }) {
         </div>
       </div>
 
+      {erreur && <p className="text-sm text-brand-brick">Impossible de charger les ventes : {erreur}</p>}
+
       {loading ? (
         <p className="eyebrow">Chargement…</p>
       ) : (
@@ -456,7 +460,7 @@ function CaissePanel({ barman, onNavigate }: { barman: Membre; onNavigate: (ongl
   const fetchVentesRecentes = async () => {
     const { data } = await supabase
       .from('bar_consommations')
-      .select('*, bar_produits(titre, icone), membres(prenom, nom)')
+      .select('*, bar_produits(titre, icone), membres!bar_consommations_membre_id_fkey(prenom, nom)')
       .order('created_at', { ascending: false })
       .limit(15)
     setVentesRecentes(data || [])
