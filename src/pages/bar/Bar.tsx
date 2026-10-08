@@ -159,16 +159,19 @@ function TableauDeBordPanel({ onNavigate }: { onNavigate: (onglet: SousOnglet) =
   const [consommations, setConsommations] = useState<BarConsommation[]>([])
   const [produits, setProduits] = useState<BarProduit[]>([])
   const [soldes, setSoldes] = useState<BarSolde[]>([])
+  const [reglements, setReglements] = useState<BarPaiement[]>([])
   const [membresOptions, setMembresOptions] = useState<MembreOption[]>([])
 
   useEffect(() => {
     (async () => {
-      const [{ data: consoData }, { data: produitsData }, { data: soldesData }, membresData] = await Promise.all([
+      const [{ data: consoData }, { data: produitsData }, { data: soldesData }, membresData, { data: reglementsData }] = await Promise.all([
         supabase.from('bar_consommations').select('*').eq('statut', 'validee'),
         supabase.from('bar_produits').select('*'),
         supabase.from('bar_soldes').select('*'),
         fetchMembresOptions(),
+        supabase.from('bar_paiements').select('*'),
       ])
+      setReglements(reglementsData || [])
       setConsommations(consoData || [])
       setProduits(produitsData || [])
       setSoldes(soldesData || [])
@@ -177,7 +180,13 @@ function TableauDeBordPanel({ onNavigate }: { onNavigate: (onglet: SousOnglet) =
     })()
   }, [])
 
-  const ca = useMemo(() => consommations.reduce((sum, c) => sum + Number(c.montant_total), 0), [consommations])
+  // Argent réellement encaissé : ventes payées CB sur le moment + règlements
+  // d'ardoise. Une vente à l'ardoise n'est encaissée qu'au règlement.
+  const encaisse = useMemo(() => {
+    const ventesCb = consommations.filter((c) => c.mode_paiement === 'cb').reduce((sum, c) => sum + Number(c.montant_total), 0)
+    const totalReglements = reglements.reduce((sum, r) => sum + Number(r.montant), 0)
+    return ventesCb + totalReglements
+  }, [consommations, reglements])
 
   const topProduits = useMemo(() => {
     const parProduit = new Map<string, number>()
@@ -216,8 +225,8 @@ function TableauDeBordPanel({ onNavigate }: { onNavigate: (onglet: SousOnglet) =
         </button>
         <div className="border border-brand-hairline bg-brand-paper p-md text-center">
           <p className="text-2xl mb-xxs">💳</p>
-          <p className="font-display font-bold text-2xl text-brand-ink">{formatMontant(ca)}</p>
-          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Encaissé au total</p>
+          <p className="font-display font-bold text-2xl text-brand-ink">{formatMontant(encaisse)}</p>
+          <p className="text-[10px] uppercase tracking-[0.1em] text-brand-ink/50">Encaissé (CB + règlements)</p>
         </div>
       </div>
 
