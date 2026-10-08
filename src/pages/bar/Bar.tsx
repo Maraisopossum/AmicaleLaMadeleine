@@ -324,7 +324,122 @@ function VenteLigne({ vente, onAnnuler }: { vente: VenteRecente; onAnnuler: (v: 
   )
 }
 
+type ReglementAvecMembre = BarPaiement & { membres?: { prenom: string; nom: string } | null }
+
+function ReglementsListe() {
+  const TAILLE_PAGE = 30
+  const [reglements, setReglements] = useState<ReglementAvecMembre[]>([])
+  const [loading, setLoading] = useState(true)
+  const [erreur, setErreur] = useState<string | null>(null)
+  const [aPlus, setAPlus] = useState(false)
+  const [filtreMode, setFiltreMode] = useState<'tous' | 'cb' | 'especes'>('tous')
+  const [recherche, setRecherche] = useState('')
+
+  const charger = async (jusqua: number) => {
+    let requete = supabase
+      .from('bar_paiements')
+      .select('*, membres!bar_paiements_membre_id_fkey(prenom, nom)')
+      .order('created_at', { ascending: false })
+      .range(0, jusqua)
+    if (filtreMode !== 'tous') requete = requete.eq('mode', filtreMode)
+    const { data, error } = await requete
+    setErreur(error ? error.message : null)
+    const lignes = (data || []) as ReglementAvecMembre[]
+    setAPlus(lignes.length > jusqua)
+    setReglements(lignes.slice(0, jusqua))
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    charger(TAILLE_PAGE)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtreMode])
+
+  const filtres = useMemo(() => {
+    const q = recherche.trim().toLowerCase()
+    if (!q) return reglements
+    return reglements.filter((r) => `${r.membres?.prenom ?? ''} ${r.membres?.nom ?? ''}`.toLowerCase().includes(q))
+  }, [reglements, recherche])
+
+  const total = filtres.reduce((sum, r) => sum + Number(r.montant), 0)
+
+  return (
+    <div className="space-y-md">
+      <input
+        value={recherche}
+        onChange={(e) => setRecherche(e.target.value)}
+        placeholder="🔎 Rechercher un membre…"
+        className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
+      />
+      <div className="flex">
+        {(['tous', 'cb', 'especes'] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setFiltreMode(m)}
+            className={`px-md py-xs text-xs uppercase tracking-[0.1em] font-semibold border ${filtreMode === m ? 'bg-brand-petrol text-brand-parchment border-brand-petrol' : 'border-brand-hairline'}`}
+          >
+            {m === 'tous' ? 'Tous modes' : m === 'cb' ? 'CB' : 'Espèces'}
+          </button>
+        ))}
+      </div>
+
+      {erreur && <p className="text-sm text-brand-brick">Impossible de charger les règlements : {erreur}</p>}
+
+      {loading ? (
+        <p className="eyebrow">Chargement…</p>
+      ) : (
+        <>
+          <p className="text-xs text-brand-ink/50">
+            {filtres.length} règlement{filtres.length > 1 ? 's' : ''} affiché{filtres.length > 1 ? 's' : ''} · {formatMontant(total)}
+          </p>
+          <div className="border border-brand-hairline divide-y divide-brand-hairline">
+            {filtres.map((r) => (
+              <div key={r.id} className="p-sm text-sm">
+                <div className="flex flex-wrap items-center gap-x-md gap-y-xxs">
+                  <span>{r.membres ? `${r.membres.prenom} ${r.membres.nom}` : '—'}</span>
+                  <span className="tag bg-brand-hairline text-brand-ink/70">{r.mode === 'cb' ? 'CB' : 'Espèces'}</span>
+                  <span className="ml-auto font-semibold text-success whitespace-nowrap">+{formatMontant(r.montant)}</span>
+                </div>
+                <p className="text-xs text-brand-ink/50">
+                  {formatDateHeure(r.created_at)}{r.zettle_reference ? ` · Réf. ${r.zettle_reference}` : ''}
+                </p>
+              </div>
+            ))}
+            {!filtres.length && <p className="text-sm text-brand-ink/50 p-md">Aucun règlement ne correspond.</p>}
+          </div>
+          {aPlus && (
+            <button onClick={() => charger(reglements.length + TAILLE_PAGE)} className="btn-secondary text-xs w-full">
+              Voir plus
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function VentesPanel({ barman }: { barman: Membre }) {
+  const [vue, setVue] = useState<'ventes' | 'reglements'>('ventes')
+  return (
+    <div className="space-y-md">
+      <div className="flex">
+        {(['ventes', 'reglements'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setVue(v)}
+            className={`px-md py-sm text-xs uppercase tracking-[0.1em] font-semibold border ${vue === v ? 'bg-brand-ink text-brand-parchment border-brand-ink' : 'border-brand-hairline'}`}
+          >
+            {v === 'ventes' ? 'Ventes' : 'Règlements'}
+          </button>
+        ))}
+      </div>
+      {vue === 'ventes' ? <VentesListe barman={barman} /> : <ReglementsListe />}
+    </div>
+  )
+}
+
+function VentesListe({ barman }: { barman: Membre }) {
   const TAILLE_PAGE = 30
   const [ventes, setVentes] = useState<VenteRecente[]>([])
   const [loading, setLoading] = useState(true)
@@ -901,6 +1016,7 @@ function ArdoisesPanel({ barman }: { barman: Membre }) {
   const [membresOptions, setMembresOptions] = useState<MembreOption[]>([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
+  const [afficherSoldes, setAfficherSoldes] = useState(false)
   const [membreOuvert, setMembreOuvert] = useState<MembreOption | null>(null)
 
   const fetchAll = async () => {
@@ -919,10 +1035,10 @@ function ArdoisesPanel({ barman }: { barman: Membre }) {
     const q = recherche.trim().toLowerCase()
     return membresOptions
       .map((m) => ({ membre: m, solde: soldes.find((s) => s.membre_id === m.id)?.solde ?? 0 }))
-      .filter((l) => l.solde !== 0)
+      .filter((l) => afficherSoldes || l.solde !== 0)
       .filter((l) => !q || `${l.membre.prenom} ${l.membre.nom}`.toLowerCase().includes(q))
       .sort((a, b) => a.solde - b.solde)
-  }, [membresOptions, soldes, recherche])
+  }, [membresOptions, soldes, recherche, afficherSoldes])
 
   if (loading) return <p className="eyebrow">Chargement…</p>
 
@@ -945,6 +1061,10 @@ function ArdoisesPanel({ barman }: { barman: Membre }) {
         placeholder="🔎 Rechercher un membre…"
         className="w-full border border-brand-hairline bg-brand-parchment px-md py-sm text-sm"
       />
+      <label className="flex items-center gap-xs text-xs text-brand-ink/70">
+        <input type="checkbox" checked={afficherSoldes} onChange={(e) => setAfficherSoldes(e.target.checked)} />
+        Afficher aussi les membres à solde nul (pour retrouver leurs règlements)
+      </label>
       <div className="border border-brand-hairline divide-y divide-brand-hairline">
         {lignes.map(({ membre, solde }) => (
           <button
