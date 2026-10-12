@@ -53,7 +53,12 @@ export default function MonCompte() {
       // Lève le flag côté serveur (verrouillé pour l'écriture directe, voir
       // 20240121000000_membres_doit_changer_mdp.sql) une fois le mot de passe
       // effectivement changé, pour ne plus être redirigé de force ici.
-      await supabase.rpc('clear_doit_changer_mdp')
+      const { error: clearError } = await supabase.rpc('clear_doit_changer_mdp')
+      if (clearError) {
+        setSaving(false)
+        setError(`Mot de passe changé, mais impossible de lever le blocage : ${clearError.message}`)
+        return
+      }
       await refreshMembre()
     }
 
