@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   membre?.role === 'adjoint_secretaire' ||
                   membre?.role === 'adjoint_tresorier'
 
-  const canManageMembres = membre?.role === 'president' || user?.email === ADMIN_EMAIL
+  const canManageMembres = isAdmin
 
   // Périmètre distinct de canManageMembres : accès aux candidatures de
   // recrutement, réservé à l'admin fixe + aux membres explicitement désignés
